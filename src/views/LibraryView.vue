@@ -13,7 +13,10 @@ import {
   filterBooks,
   type LibraryFilters,
 } from '../composables/useBooks'
-
+import { useCatalog } from '../composables/useCatalog'
+import { listCatalog, listTags } from '../api/catalog'
+import { cardsToBooks, tagNameLookup } from '../api/adapt'
+import type { Book } from '../data/books'
 const route = useRoute()
 const router = useRouter()
 
@@ -22,8 +25,29 @@ const categoryFromQuery = () => {
   return categories.find((category) => category.slug === slug)?.name ?? 'all'
 }
 
+const { books: catalogBooks, loading, error, reload } = useCatalog()
+
+// Bundles are a separate product: they have no age or topic of their own, so they are
+// listed on their own rather than mixed into the book grid.
+const bundles = ref<Book[]>([])
+const loadBundles = async () => {
+  try {
+    const [page, tags] = await Promise.all([
+      listCatalog({ kind: 'bundle', limit: 6 }),
+      listTags().catch(() => []),
+    ])
+    bundles.value = cardsToBooks(page.items, tagNameLookup(tags))
+  } catch {
+    // A missing bundle list must not break the book grid.
+    bundles.value = []
+  }
+}
+void loadBundles()
+
 const filters = ref<LibraryFilters>(createLibraryFilters(categoryFromQuery()))
-const filteredBooks = computed(() => filterBooks(filters.value))
+const filteredBooks = computed(() =>
+  filterBooks(filters.value, catalogBooks.value),
+)
 
 const BOOKS_PER_PAGE = 10
 const currentPage = ref(1)
@@ -97,6 +121,12 @@ watch(
           </div>
         </div>
 
+        <section v-if="bundles.length" class="library-bundles" aria-labelledby="library-bundles-title">
+          <h2 id="library-bundles-title">Gói sách tiết kiệm</h2>
+          <p>Mua một lần, đọc trọn bộ sách trong gói.</p>
+          <BookGrid :books="bundles" variant="library" />
+        </section>
+
         <BookFilters
           :model-value="filters"
           :categories="categories"
@@ -108,13 +138,21 @@ watch(
           {{ filteredBooks.length }} cuốn sách phù hợp
         </p>
 
+        <div v-if="loading" class="library-empty" role="status">
+          <p>Đang tải thư viện…</p>
+        </div>
+
+        <div v-else-if="error" class="library-empty" role="alert">
+          <h2>Chưa kết nối được thư viện</h2>
+          <p>{{ error }}</p>
+          <BaseButton variant="secondary" @click="reload">Thử lại</BaseButton>
+        </div>
+
         <BookGrid
-          v-if="paginatedBooks.length"
+          v-else-if="paginatedBooks.length"
           :books="paginatedBooks"
           variant="library"
         />
-
-
         <div v-else class="library-empty">
           <span class="library-empty__icon" aria-hidden="true">
             <SearchX :size="38" />

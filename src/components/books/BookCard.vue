@@ -15,7 +15,7 @@ withDefaults(
   <RouterLink
     class="book"
     :class="`book--${variant}`"
-    :to="`/books/${book.slug}`"
+    :to="book.kind === 'bundle' ? `/bundles/${book.slug}` : `/books/${book.slug}`"
   >
     <img
       class="book__cover"
@@ -24,9 +24,10 @@ withDefaults(
     />
     <div class="book__text">
       <h3>{{ book.title }}</h3>
-      <p>
-        {{ book.category }} <span aria-hidden="true">•</span>
-        {{ book.ageRange }}
+      <p v-if="book.category || book.ageRange">
+        <template v-if="book.category">{{ book.category }}</template>
+        <span v-if="book.category && book.ageRange" aria-hidden="true">•</span>
+        <template v-if="book.ageRange">{{ book.ageRange }}</template>
       </p>
     </div>
     <span v-if="!book.isFree" class="book__price">{{ formatPrice(book) }}</span>

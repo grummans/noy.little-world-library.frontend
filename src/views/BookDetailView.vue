@@ -7,23 +7,67 @@ import {
   Lock,
   Palette,
   Play,
+  Video,
   Volume2,
 } from "lucide-vue-next";
 import { RouterLink, useRoute } from "vue-router";
 import AppHeader from "../components/app/AppHeader.vue";
 import AppFooter from "../components/app/AppFooter.vue";
 import BaseButton from "../components/ui/BaseButton.vue";
-import { books, formatPrice } from "../data/books";
-import { isUnlocked, unlockBook } from "../composables/useOwnedBooks";
+import { formatPrice, type Book } from "../data/books";
+import { ApiError } from "../api/client";
+import { getBook, listTags } from "../api/catalog";
+import { cardToBook, tagNameLookup } from "../api/adapt";
 import { categories } from "../data/categories";
 
 const route = useRoute();
 const savedBooks = ref<string[]>([]);
 const storageKey = "little-wonder-saved-books";
 
-const book = computed(() =>
-  books.find((entry) => entry.slug === route.params.slug && entry.published),
-);
+const book = ref<Book | null>(null);
+const loading = ref(true);
+const notFound = ref(false);
+const loadError = ref("");
+// Only the newest request may write state: switching slug quickly must not let an older
+// response overwrite the newer book.
+let requestId = 0;
+
+const load = async () => {
+  const current = ++requestId;
+  const slug = String(route.params.slug);
+
+  loading.value = true;
+  notFound.value = false;
+  loadError.value = "";
+  book.value = null;
+
+  try {
+    const [detail, tags] = await Promise.all([
+      getBook(slug),
+      listTags().catch(() => []),
+    ]);
+    if (current !== requestId) return;
+
+    const mapped = cardToBook(detail.book, tagNameLookup(tags));
+    mapped.description = detail.description;
+    book.value = mapped;
+  } catch (err) {
+    if (current !== requestId) return;
+
+    if (err instanceof ApiError && err.status === 404) {
+      notFound.value = true;
+    } else {
+      loadError.value =
+        err instanceof ApiError ? err.message : "Không tải được cuốn sách.";
+    }
+  } finally {
+    if (current === requestId) loading.value = false;
+  }
+};
+
+onMounted(load);
+watch(() => route.params.slug, load);
+
 const isSaved = computed(() =>
   Boolean(book.value && savedBooks.value.includes(book.value.slug)),
 );
@@ -31,15 +75,10 @@ const categorySlug = computed(
   () =>
     categories.find((category) => category.name === book.value?.category)?.slug,
 );
-const unlocked = computed(() => Boolean(book.value && isUnlocked(book.value)));
-const unlockDialog = ref<HTMLDialogElement>();
-const successDialog = ref<HTMLDialogElement>();
+// Free books open straight away. Paid books need checkout, which does not exist yet, so
+// the CTA must not pretend the book is readable.
+const canReadNow = computed(() => book.value?.isFree === true);
 
-const confirmUnlock = () => {
-  if (book.value) unlockBook(book.value.slug);
-  unlockDialog.value?.close();
-  successDialog.value?.showModal();
-};
 const toggleSaved = () => {
   if (!book.value) return;
 
@@ -69,7 +108,6 @@ watch(
   { deep: true },
 );
 </script>
-
 <template>
   <div class="detail-page">
     <AppHeader variant="overlay" contrast="dark" />
@@ -77,12 +115,14 @@ watch(
     <main v-if="book" class="detail-content">
       <nav class="breadcrumbs" aria-label="Đường dẫn">
         <RouterLink to="/library">Thư viện sách</RouterLink>
-        <span aria-hidden="true">/</span>
-        <RouterLink
-          :to="categorySlug ? `/library?category=${categorySlug}` : '/library'"
-        >
-          {{ book.category }}
-        </RouterLink>
+        <template v-if="book.category">
+          <span aria-hidden="true">/</span>
+          <RouterLink
+            :to="categorySlug ? `/library?category=${categorySlug}` : '/library'"
+          >
+            {{ book.category }}
+          </RouterLink>
+        </template>
         <span aria-hidden="true">/</span>
         <span aria-current="page">{{ book.title }}</span>
       </nav>
@@ -103,9 +143,15 @@ watch(
           <p class="detail-description">{{ book.description }}</p>
 
           <ul class="detail-tags" aria-label="Thông tin sách">
-            <li class="detail-tag detail-tag--butter">{{ book.ageRange }}</li>
+            <li v-if="book.pageCount" class="detail-tag detail-tag--butter">
+              {{ book.pageCount }} trang
+            </li>
+            <li v-if="book.ageRange" class="detail-tag detail-tag--butter">{{ book.ageRange }}</li>
             <li v-if="book.hasAudio" class="detail-tag detail-tag--sky">
               <Volume2 :size="15" /> Âm thanh
+            </li>
+            <li v-if="book.hasVideo" class="detail-tag detail-tag--sky">
+              <Video :size="15" /> Video
             </li>
             <li class="detail-tag detail-tag--mint">
               <BookOpen :size="15" /> EPUB
@@ -123,7 +169,7 @@ watch(
 
           <div class="detail-actions">
             <BaseButton
-              v-if="unlocked"
+              v-if="canReadNow"
               :to="`/read/${book.slug}`"
               class="detail-read"
             >
@@ -132,9 +178,10 @@ watch(
             <BaseButton
               v-else
               class="detail-read"
-              @click="unlockDialog?.showModal()"
+              disabled
+              title="Thanh toán sẽ mở ở bước tiếp theo"
             >
-              <Lock :size="18" /> Mở khóa sách · {{ formatPrice(book) }}
+              <Lock :size="18" /> Sách trả phí · {{ formatPrice(book) }}
             </BaseButton>
             <button
               type="button"
@@ -159,7 +206,7 @@ watch(
           Hãy trò chuyện cùng bé về những điều con đã thấy trong sách và khuyến
           khích bé kể lại theo cách của mình.
         </p>
-        <ul>
+        <ul v-if="book.learningObjectives.length">
           <li v-for="objective in book.learningObjectives" :key="objective">
             {{ objective }}
           </li>
@@ -171,7 +218,17 @@ watch(
       </section>
     </main>
 
-    <main v-else class="detail-missing">
+    <main v-else-if="loading" class="detail-missing" role="status">
+      <h1>Đang tải cuốn sách…</h1>
+    </main>
+
+    <main v-else-if="loadError" class="detail-missing" role="alert">
+      <h1>Chưa tải được cuốn sách</h1>
+      <p>{{ loadError }}</p>
+      <BaseButton variant="secondary" @click="load">Thử lại</BaseButton>
+    </main>
+
+    <main v-else-if="notFound" class="detail-missing">
       <h1>Không tìm thấy cuốn sách này</h1>
       <p>Cuốn sách có thể đã được di chuyển hoặc chưa được xuất bản.</p>
       <BaseButton to="/library" variant="secondary"
@@ -181,57 +238,7 @@ watch(
 
     <AppFooter :label="book ? book.title : 'Thư viện sách'" />
 
-    <dialog ref="unlockDialog" class="unlock" aria-labelledby="unlock-title">
-      <h2 id="unlock-title">Mở khóa “{{ book?.title }}”</h2>
-      <p class="unlock__price">{{ book ? formatPrice(book) : "" }}</p>
-      <p>
-        Mở khóa trọn bộ nội dung của cuốn sách để bé đọc ngay trên thiết bị.
-        Nhấn <strong>Xác nhận mở khóa</strong> để hoàn tất.
-      </p>
-      <div class="unlock__actions">
-        <button
-          type="button"
-          class="detail-save"
-          @click="unlockDialog?.close()"
-        >
-          Để sau
-        </button>
-        <button
-          type="button"
-          class="button button--primary"
-          @click="confirmUnlock"
-        >
-          Xác nhận mở khóa
-        </button>
-      </div>
-    </dialog>
-
-    <dialog
-      ref="successDialog"
-      class="unlock unlock--success"
-      aria-labelledby="unlock-success-title"
-    >
-      <span class="unlock__badge" aria-hidden="true">
-        <BookOpen :size="30" />
-      </span>
-      <h2 id="unlock-success-title">Sách đã được mở khóa</h2>
-      <p>Bé có thể đọc “{{ book?.title }}” ngay bây giờ.</p>
-      <div class="unlock__actions">
-        <button
-          type="button"
-          class="detail-save"
-          @click="successDialog?.close()"
-        >
-          Để sau
-        </button>
-        <RouterLink
-          class="button button--primary"
-          :to="`/read/${book?.slug}`"
-          @click="successDialog?.close()"
-        >
-          <Play :size="18" fill="currentColor" /> Đọc sách ngay
-        </RouterLink>
-      </div>
-    </dialog>
+    <!-- Paid checkout lands here once the auth + payment screens exist (TODO 7). The
+         old localStorage "unlock" pretended to buy a book the API then refused. -->
   </div>
 </template>

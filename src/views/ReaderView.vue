@@ -15,11 +15,12 @@ import {
   Expand,
   LoaderCircle,
   Volume2,
-  Video,
 } from "lucide-vue-next";
 import AppHeader from "../components/app/AppHeader.vue";
-import { books, type Book } from "../data/books";
-import { isUnlocked } from "../composables/useOwnedBooks";
+import { type Book } from "../data/books";
+import { ApiError } from "../api/client";
+import { getBook, listTags, startReading } from "../api/catalog";
+import { cardToBook, tagNameLookup } from "../api/adapt";
 
 type FoliateViewElement = HTMLElement & {
   book?: {
@@ -46,11 +47,10 @@ const isFullscreen = ref(false);
 let currentAudio: HTMLAudioElement | undefined;
 let currentAudioUrl: string | undefined;
 
-const book = computed<Book | undefined>(() =>
-  books.find((item) => item.slug === route.params.slug && item.published),
-);
-
-const isLocked = computed(() => Boolean(book.value && !isUnlocked(book.value)));
+const book = ref<Book | null>(null);
+const epubUrl = ref("");
+const isLocked = ref(false);
+const loadError = ref("");
 
 const pageLabel = computed(() =>
   pageCount.value
@@ -145,7 +145,14 @@ function attachAudioControls(event: Event) {
     });
 }
 
+// Only the newest navigation may render: a slow response for the previous slug must not
+// take over the reader.
+let requestId = 0;
+
 async function loadBook() {
+  const current = ++requestId;
+  const slug = String(route.params.slug);
+
   reader.value?.close();
   reader.value = undefined;
   errorMessage.value = "";
@@ -153,25 +160,80 @@ async function loadBook() {
   pageCount.value = 0;
   stopCurrentAudio();
 
-  if (!book.value || isLocked.value || !readerMount.value) {
+  isLoading.value = true;
+  isLocked.value = false;
+  loadError.value = "";
+  book.value = null;
+
+  try {
+    const [detail, tags] = await Promise.all([
+      getBook(slug),
+      listTags().catch(() => []),
+    ]);
+    if (current !== requestId) return;
+
+    const mapped = cardToBook(detail.book, tagNameLookup(tags));
+    mapped.description = detail.description;
+    book.value = mapped;
+  } catch (err) {
+    if (current !== requestId) return;
+
+    loadError.value =
+      err instanceof ApiError && err.status === 404
+        ? "not_found"
+        : err instanceof ApiError
+          ? err.message
+          : "Không tải được cuốn sách.";
+
     isLoading.value = false;
     return;
   }
 
-  isLoading.value = true;
+  try {
+    const session = await startReading(slug);
+    if (current !== requestId) return;
+    epubUrl.value = session.url;
+  } catch (err) {
+    if (current !== requestId) return;
+
+    if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+      isLocked.value = true;
+    } else {
+      errorMessage.value =
+        err instanceof ApiError ? err.message : "Không mở được cuốn sách.";
+    }
+    isLoading.value = false;
+    return;
+  }
+
+  if (!readerMount.value) {
+    isLoading.value = false;
+    return;
+  }
+
   try {
     await import("../vendor/foliate-js/view.js");
+    // A navigation during the dynamic import makes this attempt stale.
+    if (current !== requestId) return;
+
     const view = document.createElement("foliate-view") as FoliateViewElement;
     view.className = "reader__foliate";
     view.addEventListener("relocate", updateLocation);
     view.addEventListener("load", attachAudioControls);
     readerMount.value.replaceChildren(view);
     reader.value = view;
-    await view.open(book.value.epubUrl);
+    await view.open(epubUrl.value);
+    if (current !== requestId) {
+      view.close();
+      return;
+    }
+
     view.book?.transformTarget?.addEventListener("data", removeBookScripts);
     pageCount.value = view.book?.sections?.length ?? 0;
     await view.init({ showTextStart: true });
+    if (current !== requestId) return;
   } catch (error) {
+    if (current !== requestId) return;
     console.error("Không thể mở EPUB", error);
     errorMessage.value =
       "Không thể mở cuốn sách này. Bé hãy quay lại thư viện và thử lại nhé.";
@@ -261,9 +323,6 @@ onBeforeUnmount(() => {
               class="reader-feature reader-feature--sound"
             >
               <Volume2 :size="15" aria-hidden="true" /> Âm thanh
-            </li>
-            <li class="reader-feature reader-feature--video">
-              <Video :size="15" aria-hidden="true" /> Video
             </li>
             <li class="reader-feature reader-feature--pages">
               {{ pageCount || "…" }} trang sách
@@ -355,17 +414,28 @@ onBeforeUnmount(() => {
       </p>
     </main>
 
+    <main v-else-if="isLoading" class="reader-missing" role="status">
+      <h1>Đang mở cuốn sách…</h1>
+    </main>
+
     <main v-else-if="isLocked" class="reader-missing">
       <h1>Cuốn sách này chưa được mở khóa</h1>
-      <p>Sách trả phí cần phụ huynh mở khóa trước khi bé đọc.</p>
+      <p>
+        Sách trả phí cần đăng nhập và thanh toán trước khi bé đọc. Phụ huynh mở
+        khóa trong khu vực thanh toán.
+      </p>
       <RouterLink class="button button--primary" :to="`/books/${book?.slug}`"
         >Xem và mở khóa</RouterLink
       >
     </main>
 
-    <main v-else class="reader-missing">
-      <h1>Không tìm thấy cuốn sách</h1>
-      <p>Cuốn sách này không còn trong thư viện.</p>
+    <main v-else class="reader-missing" role="alert">
+      <h1>{{ loadError === "not_found" ? "Không tìm thấy cuốn sách" : "Chưa mở được cuốn sách" }}</h1>
+      <p v-if="loadError === 'not_found'">Cuốn sách này không còn trong thư viện.</p>
+      <p v-else>{{ loadError }}</p>
+      <button v-if="loadError !== 'not_found'" type="button" class="button button--primary" @click="loadBook">
+        Thử lại
+      </button>
       <RouterLink class="button button--primary" to="/library"
         >Về thư viện</RouterLink
       >

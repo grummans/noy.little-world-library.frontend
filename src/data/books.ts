@@ -1,4 +1,5 @@
 export interface Book {
+  kind?: "book" | "bundle";
   slug: string;
   title: string;
   cover: string;
@@ -8,6 +9,8 @@ export interface Book {
   duration: string;
   description: string;
   hasAudio: boolean;
+  hasVideo?: boolean;
+  pageCount?: number;
   isFree: boolean;
   price?: number;
   learningObjectives: string[];
