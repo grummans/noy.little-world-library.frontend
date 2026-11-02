@@ -11,6 +11,8 @@ export interface OrderResponse {
   bundle_id?: number
   paid_at?: string
   payment_url?: string
+  transaction_no?: string
+  response_code?: string
 }
 
 export const createOrder = (input: { bookSlug?: string; bundleSlug?: string }) =>
@@ -21,3 +23,12 @@ export const createOrder = (input: { bookSlug?: string; bundleSlug?: string }) =
 
 export const getOrder = (txnRef: string) =>
   apiFetch<OrderResponse>(`/api/orders/${encodeURIComponent(txnRef)}`)
+
+export interface OrderListItem extends OrderResponse {
+  item_title: string
+  item_slug: string
+  created_at: string
+}
+
+// The buyer's own history: what happened to a payment the browser never confirmed.
+export const listMyOrders = () => apiFetch<OrderListItem[]>('/api/orders')

@@ -14,8 +14,6 @@ import {
   type LibraryFilters,
 } from '../composables/useBooks'
 import { useCatalog } from '../composables/useCatalog'
-import { listCatalog, listTags } from '../api/catalog'
-import { cardsToBooks, tagNameLookup } from '../api/adapt'
 import type { Book } from '../data/books'
 const route = useRoute()
 const router = useRouter()
@@ -25,29 +23,23 @@ const categoryFromQuery = () => {
   return categories.find((category) => category.slug === slug)?.name ?? 'all'
 }
 
-const { books: catalogBooks, loading, error, reload } = useCatalog()
+// Books and bundles come back in one catalog request and share one grid.
+const { books: catalogBooks, loading, error, reload } = useCatalog('all')
 
-// Bundles are a separate product: they have no age or topic of their own, so they are
-// listed on their own rather than mixed into the book grid.
-const bundles = ref<Book[]>([])
-const loadBundles = async () => {
-  try {
-    const [page, tags] = await Promise.all([
-      listCatalog({ kind: 'bundle', limit: 6 }),
-      listTags().catch(() => []),
-    ])
-    bundles.value = cardsToBooks(page.items, tagNameLookup(tags))
-  } catch {
-    // A missing bundle list must not break the book grid.
-    bundles.value = []
-  }
-}
-void loadBundles()
-
+const kind = ref<'all' | 'book' | 'bundle'>('all')
+const kindOf = (book: Book) => book.kind ?? 'book'
+const kindOptions = [
+  { value: 'all', label: 'Tất cả' },
+  { value: 'book', label: 'Sách lẻ' },
+  { value: 'bundle', label: 'Gói sách' },
+] as const
 const filters = ref<LibraryFilters>(createLibraryFilters(categoryFromQuery()))
-const filteredBooks = computed(() =>
-  filterBooks(filters.value, catalogBooks.value),
+const scopedBooks = computed(() =>
+  kind.value === 'all'
+    ? catalogBooks.value
+    : catalogBooks.value.filter((book) => kindOf(book) === kind.value),
 )
+const filteredBooks = computed(() => filterBooks(filters.value, scopedBooks.value))
 
 const BOOKS_PER_PAGE = 10
 const currentPage = ref(1)
@@ -121,11 +113,21 @@ watch(
           </div>
         </div>
 
-        <section v-if="bundles.length" class="library-bundles" aria-labelledby="library-bundles-title">
-          <h2 id="library-bundles-title">Gói sách tiết kiệm</h2>
-          <p>Mua một lần, đọc trọn bộ sách trong gói.</p>
-          <BookGrid :books="bundles" variant="library" />
-        </section>
+        <div class="library-kinds" role="tablist" aria-label="Loại sản phẩm">
+          <button
+            v-for="option in kindOptions"
+            :key="option.value"
+            class="library-kinds__pill"
+            :class="{ 'library-kinds__pill--active': kind === option.value }"
+            type="button"
+            role="tab"
+            :aria-selected="kind === option.value"
+            @click="kind = option.value"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+
 
         <BookFilters
           :model-value="filters"
@@ -135,7 +137,7 @@ watch(
         />
 
         <p class="sr-only" aria-live="polite">
-          {{ filteredBooks.length }} cuốn sách phù hợp
+          {{ filteredBooks.length }} nội dung phù hợp
         </p>
 
         <div v-if="loading" class="library-empty" role="status">
@@ -157,8 +159,8 @@ watch(
           <span class="library-empty__icon" aria-hidden="true">
             <SearchX :size="38" />
           </span>
-          <h2>Chưa tìm thấy cuốn sách nào</h2>
-          <p>Thử một từ khóa khác hoặc đặt lại bộ lọc để xem tất cả truyện nhé.</p>
+          <h2>Chưa tìm thấy nội dung nào</h2>
+          <p>Thử một từ khóa khác hoặc đặt lại bộ lọc để xem tất cả sách và gói sách nhé.</p>
           <BaseButton variant="secondary" @click="resetFilters">
             Đặt lại bộ lọc
           </BaseButton>

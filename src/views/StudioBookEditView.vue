@@ -333,7 +333,7 @@ const backToStudio = () => void router.push('/studio')
 
 .edit__chip {
   font-weight: 700;
-  padding: 2px 10px;
+  padding: 3px 10px 1px;
   border-radius: 999px;
   font-size: 12px;
 }

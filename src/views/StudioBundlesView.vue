@@ -337,7 +337,7 @@ const money = (value: number) => `${value.toLocaleString('vi-VN')}đ`
 .bundles__chip {
   display: inline-block;
   border-radius: 999px;
-  padding: 4px 12px;
+  padding: 5px 12px 3px;
   font-size: 12px;
   font-weight: 700;
 }

@@ -10,7 +10,7 @@ import type { Book } from '../data/books'
 // shortcut: switch to server-side paging when the catalog outgrows one page of 50.
 const PAGE_LIMIT = 50
 
-export function useCatalog() {
+export function useCatalog(kind: 'book' | 'all' = 'book') {
   const books = ref<Book[]>([])
   const loading = ref(true)
   const error = ref('')
@@ -20,8 +20,7 @@ export function useCatalog() {
     error.value = ''
     try {
       const [page, tags] = await Promise.all([
-        // Only books for now: bundle cards need their own detail route (TODO 7).
-    listCatalog({ kind: "book", limit: PAGE_LIMIT }),
+        listCatalog({ kind, limit: PAGE_LIMIT }),
         listTags().catch(() => []),
       ])
       books.value = cardsToBooks(page.items, tagNameLookup(tags))

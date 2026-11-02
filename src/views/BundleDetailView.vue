@@ -3,27 +3,17 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import AppHeader from '../components/app/AppHeader.vue'
 import AppFooter from '../components/app/AppFooter.vue'
-import ConfirmDialog from '../components/app/ConfirmDialog.vue'
-import AppToast from '../components/app/AppToast.vue'
 import { ApiError } from '../api/client'
 import { getBundle, listTags, type BundleDetailResponse, type Card } from '../api/catalog'
-import { createOrder } from '../api/orders'
 import { useSession } from '../composables/useSession'
-import { useToast } from '../composables/useToast'
 
 const route = useRoute()
 const session = useSession()
-const { message: toast, show: showToast } = useToast()
-
 const detail = ref<BundleDetailResponse | null>(null)
 const tagNames = ref<Map<string, string>>(new Map())
 const loading = ref(true)
 const notFound = ref(false)
 const loadError = ref('')
-
-const buying = ref(false)
-const confirming = ref(false)
-const buyError = ref('')
 
 // Only the newest request may write state: switching bundle quickly must not mix them.
 let requestId = 0
@@ -97,51 +87,6 @@ const buyLabel = computed(() =>
     : 'Đăng nhập để mua',
 )
 
-const requestBuy = () => {
-  if (!bundle.value || buying.value || !isParent.value) return
-  confirming.value = true
-}
-
-const buy = async () => {
-  confirming.value = false
-  if (!bundle.value || buying.value) return
-
-  buying.value = true
-  buyError.value = ''
-  try {
-    const order = await createOrder({ bundleSlug: bundle.value.slug })
-    if (order.payment_url) {
-      showToast('Đang chuyển sang cổng thanh toán VNPay…')
-      window.location.assign(order.payment_url)
-      return
-    }
-    showToast('Đã tạo đơn. Cổng thanh toán chưa trả về liên kết.')
-  } catch (err) {
-    buyError.value = buyMessage(err)
-  } finally {
-    buying.value = false
-  }
-}
-
-const buyMessage = (err: unknown): string => {
-  if (!(err instanceof ApiError)) return 'Không tạo được đơn. Vui lòng thử lại.'
-
-  switch (err.code) {
-    case 'not_purchasable':
-      return 'Gói này chưa mở bán, hoặc bạn đã sở hữu nó.'
-    case 'not_found':
-      return 'Không tìm thấy gói sách này.'
-    case 'validation':
-      return 'Cần đăng nhập bằng tài khoản phụ huynh để mua.'
-    case 'vnpay_unavailable':
-    case 'payment_unavailable':
-      return 'Cổng thanh toán VNPay chưa được cấu hình. Vui lòng thử lại sau.'
-    case 'network':
-      return 'Mất kết nối máy chủ. Kiểm tra mạng rồi thử lại.'
-    default:
-      return 'Không tạo được đơn. Vui lòng thử lại.'
-  }
-}
 </script>
 
 <template>
@@ -192,21 +137,18 @@ const buyMessage = (err: unknown): string => {
             <RouterLink
               v-if="!session.user.value"
               class="bundle__cta"
-              :to="`/login?redirect=${encodeURIComponent(`/bundles/${bundle.slug}`)}`"
+              :to="`/checkout?bundle=${bundle.slug}`"
             >
               {{ buyLabel }}
             </RouterLink>
-            <button
-              v-else
-              type="button"
+            <RouterLink
+              v-else-if="isParent"
               class="bundle__cta"
-              :disabled="!isParent || buying"
-              @click="requestBuy"
+              :to="`/checkout?bundle=${bundle.slug}`"
             >
-              {{ buying ? 'Đang tạo đơn…' : buyLabel }}
-            </button>
-
-            <p v-if="buyError" class="bundle__error" role="alert">{{ buyError }}</p>
+              {{ buyLabel }}
+            </RouterLink>
+            <button v-else type="button" class="bundle__cta" disabled>{{ buyLabel }}</button>
           </div>
         </section>
 
@@ -271,15 +213,6 @@ const buyMessage = (err: unknown): string => {
 
     <AppFooter :label="bundle ? bundle.title : 'Gói sách'" />
 
-    <ConfirmDialog
-      :open="confirming"
-      title="Mua gói sách này?"
-      :message="`Bạn sẽ thanh toán ${money(bundle?.price_vnd ?? null)} cho “${bundle?.title ?? ''}” qua VNPay.`"
-      confirm-label="Sang VNPay"
-      @confirm="buy"
-      @cancel="confirming = false"
-    />
-    <AppToast :message="toast" />
   </div>
 </template>
 

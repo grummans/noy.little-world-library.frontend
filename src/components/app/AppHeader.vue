@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Menu, Search, X } from 'lucide-vue-next'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useSession } from '../../composables/useSession'
@@ -32,6 +32,81 @@ const loginTarget = computed(() => ({
 
 const signingOut = ref(false)
 
+// One pill for the account: the links move into a dropdown so the header keeps one
+// compact group instead of three floating pills.
+const userMenuOpen = ref(false)
+const userMenu = ref<HTMLElement | null>(null)
+
+const userInitial = computed(() => {
+  const name = session.user.value?.display_name?.trim() ?? ''
+  return name ? name.charAt(0).toLocaleUpperCase('vi-VN') : '?'
+})
+
+// Hover opens the menu on desktop; a click that lands on an already hover-opened menu
+// must not close it, or the pill feels broken to anyone who clicks instead of hovering.
+const openedByHover = ref(false)
+
+const openUserMenu = () => {
+  userMenuOpen.value = true
+}
+
+// Leaving the pill cancels a pending close, so a diagonal move onto the panel (or over
+// the 10px gap) never drops the menu out from under the pointer.
+let closeTimer: number | undefined
+
+const onPillEnter = () => {
+  window.clearTimeout(closeTimer)
+  if (userMenuOpen.value) return
+  openedByHover.value = true
+  userMenuOpen.value = true
+}
+
+const onPillLeave = () => {
+  if (!openedByHover.value) return
+  window.clearTimeout(closeTimer)
+  closeTimer = window.setTimeout(() => {
+    openedByHover.value = false
+    userMenuOpen.value = false
+  }, 140)
+}
+
+const closeUserMenu = () => {
+  window.clearTimeout(closeTimer)
+  openedByHover.value = false
+  userMenuOpen.value = false
+}
+
+const toggleUserMenu = () => {
+  if (openedByHover.value) {
+    openedByHover.value = false
+    return
+  }
+  userMenuOpen.value = !userMenuOpen.value
+}
+
+const onUserMenuKey = (event: KeyboardEvent) => {
+  if (event.key === 'Escape' && userMenuOpen.value) {
+    closeUserMenu()
+  }
+}
+
+const onDocumentClick = (event: MouseEvent) => {
+  if (!userMenuOpen.value) return
+  if (!userMenu.value?.contains(event.target as Node)) closeUserMenu()
+}
+
+onMounted(() => {
+  void session.load()
+  document.addEventListener('click', onDocumentClick)
+  window.addEventListener('keydown', onUserMenuKey)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocumentClick)
+  window.removeEventListener('keydown', onUserMenuKey)
+  window.clearTimeout(closeTimer)
+})
+
 const signOut = async () => {
   if (signingOut.value) return
   signingOut.value = true
@@ -47,9 +122,6 @@ const signOut = async () => {
   }
 }
 
-onMounted(() => {
-  void session.load()
-})
 </script>
 
 <template>
@@ -78,21 +150,64 @@ onMounted(() => {
         ><Search :size="21"
       /></RouterLink>
 
-      <template v-if="session.user.value">
-        <RouterLink
-          v-if="session.user.value.role === 'teacher'"
-          class="parent"
-          to="/studio"
+      <div
+        v-if="session.user.value"
+        ref="userMenu"
+        class="user-menu"
+        @mouseenter="onPillEnter"
+        @mouseleave="onPillLeave"
+      >
+        <button
+          type="button"
+          class="user-menu__pill"
+          :aria-expanded="userMenuOpen"
+          aria-haspopup="true"
+          @click="toggleUserMenu"
+          @focus="openUserMenu"
         >
-          Teacher Studio
-        </RouterLink>
-        <span class="parent header__user" :title="session.user.value.display_name">
-          {{ session.user.value.display_name }}
-        </span>
-        <button type="button" class="header__signout" @click="signOut">
-          Đăng xuất
+          <span class="user-menu__avatar" aria-hidden="true">{{ userInitial }}</span>
+          <span class="user-menu__name">{{ session.user.value.display_name }}</span>
         </button>
-      </template>
+
+        <div v-show="userMenuOpen" class="user-menu__panel" role="menu">
+          <p class="user-menu__who">
+            <strong>{{ session.user.value.display_name }}</strong>
+            <span>{{ session.user.value.email }}</span>
+          </p>
+
+          <RouterLink
+            v-if="session.user.value.role === 'parent'"
+            class="user-menu__item"
+            role="menuitem"
+            to="/parent/library"
+            @click="closeUserMenu"
+          >
+            Tủ sách của bé
+          </RouterLink>
+          <RouterLink
+            v-if="session.user.value.role === 'parent'"
+            class="user-menu__item"
+            role="menuitem"
+            to="/orders"
+            @click="closeUserMenu"
+          >
+            Đơn hàng
+          </RouterLink>
+          <RouterLink
+            v-if="session.user.value.role === 'teacher'"
+            class="user-menu__item"
+            role="menuitem"
+            to="/studio"
+            @click="closeUserMenu"
+          >
+            Teacher Studio
+          </RouterLink>
+
+          <button type="button" class="user-menu__item user-menu__item--signout" @click="signOut">
+            Đăng xuất
+          </button>
+        </div>
+      </div>
       <RouterLink v-else class="parent" :to="loginTarget">Đăng nhập</RouterLink>
 
       <button
@@ -130,6 +245,13 @@ onMounted(() => {
         Tủ sách của bé
       </RouterLink>
       <RouterLink
+        v-if="session.user.value?.role === 'parent'"
+        to="/orders"
+        @click="open = false"
+      >
+        Đơn hàng
+      </RouterLink>
+      <RouterLink
         v-if="session.user.value?.role === 'teacher'"
         to="/studio"
         @click="open = false"
@@ -147,22 +269,123 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.header__user {
-  max-width: 190px;
+.user-menu {
+  position: relative;
+}
+
+/* The panel hangs 10px below the pill. Without this bridge the pointer crosses empty
+   space, mouseleave fires, and the menu closes before it can be reached. */
+.user-menu::after {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  height: 10px;
+  content: '';
+}
+
+.user-menu__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 9px 16px 7px 8px;
+  border: 0;
+  border-radius: 16px;
+  background: #d9f1e1;
+  color: #397653;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.user-menu__pill:hover {
+  background: #c8e9d5;
+}
+
+.user-menu__avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #397653;
+  color: #fff;
+  font-size: 15px;
+}
+
+.user-menu__name {
+  max-width: 170px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.header__signout {
+.user-menu__panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 10;
+  min-width: 240px;
+  padding: 8px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 12px 34px rgba(34, 58, 43, 0.22);
+}
+
+.user-menu__who {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eef3ec;
+}
+
+.user-menu__who strong {
+  font-size: 15px;
+  color: #34423b;
+}
+
+.user-menu__who span {
+  font-size: 12px;
+  color: #77847c;
+  word-break: break-all;
+}
+
+.user-menu__item {
+  display: block;
+  width: 100%;
+  padding: 11px 12px;
   border: 0;
+  border-radius: 12px;
   background: transparent;
-  color: inherit;
+  color: #34423b;
   font: inherit;
+  font-size: 14px;
   font-weight: 700;
+  text-align: left;
+  text-decoration: none;
   cursor: pointer;
-  text-decoration: underline;
-  padding: 0;
+}
+
+.user-menu__item:hover {
+  background: #f2f8ef;
+}
+
+.user-menu__item--signout {
+  color: #b3261e;
+}
+
+@media (max-width: 900px) {
+  /* The burger menu already carries these; keeping them here squeezes the header. */
+  .user-menu {
+    display: none;
+  }
+
+  .header__actions .parent {
+    display: none;
+  }
 }
 
 .mobile-nav__signout {

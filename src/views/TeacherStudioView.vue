@@ -641,5 +641,33 @@ const onSaved = (updated: TeacherBook) => {
     flex-wrap: wrap;
     align-items: center;
   }
+
+  /* Each nav item keeps its own line: wrapping them inline reads as one run-on label. */
+  .studio__nav {
+    flex: 1 1 100%;
+  }
+
+  .studio__stat {
+    flex: 1 1 calc(33% - 10px);
+    min-width: 0;
+  }
+
+  .studio__stat-value {
+    font-size: 26px;
+  }
+
+  /* The table keeps four columns but the topic is secondary on a phone. */
+  .studio__table th:nth-child(2),
+  .studio__table td:nth-child(2) {
+    display: none;
+  }
+
+  .studio__table {
+    min-width: 0;
+  }
+
+  .studio__chip {
+    white-space: nowrap;
+  }
 }
 </style>

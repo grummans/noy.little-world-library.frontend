@@ -10,6 +10,9 @@ import TeacherStudioView from '../views/TeacherStudioView.vue'
 import StudioBookEditView from '../views/StudioBookEditView.vue'
 import StudioBundlesView from '../views/StudioBundlesView.vue'
 import BundleDetailView from '../views/BundleDetailView.vue'
+import CheckoutView from '../views/CheckoutView.vue'
+import OrdersView from '../views/OrdersView.vue'
+import PaymentReturnView from '../views/PaymentReturnView.vue'
 import ComingSoonView from '../views/ComingSoonView.vue'
 import { useSession } from '../composables/useSession'
 
@@ -25,6 +28,13 @@ const router = createRouter({
     { path: '/read/:slug', component: ReaderView },
     { path: '/about', component: AboutView },
     { path: '/login', component: LoginView },
+    {
+      path: '/checkout',
+      component: CheckoutView,
+      meta: { role: 'parent' },
+    },
+    { path: '/payment/return', component: PaymentReturnView },
+    { path: '/orders', component: OrdersView, meta: { role: 'parent' } },
     {
       path: '/parent/library',
       component: ParentLibraryView,

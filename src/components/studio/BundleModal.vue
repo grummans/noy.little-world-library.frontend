@@ -482,7 +482,7 @@ defineExpose({ close })
   border: 1px solid #dee8db;
   background: #fff8ec;
   border-radius: 999px;
-  padding: 7px 14px;
+  padding: 8px 14px 6px;
   font: inherit;
   font-size: 13px;
   font-weight: 700;

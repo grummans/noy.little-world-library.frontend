@@ -1,5 +1,7 @@
 export interface Book {
   kind?: "book" | "bundle";
+  // How many books a bundle holds; only set for bundles.
+  bookCount?: number;
   slug: string;
   title: string;
   cover: string;

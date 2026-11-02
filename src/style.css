@@ -84,7 +84,8 @@ button {
 .nav {
   display: flex;
   gap: 22px;
-  padding: 14px 22px;
+  padding: 14px 21px 12px;
+  border: 1.5px solid rgba(57, 118, 83, 0.45);
   border-radius: 27px;
   background: rgba(255, 248, 233, 0.94);
   box-shadow: 0 3px 16px rgba(56, 69, 43, 0.13);
@@ -108,6 +109,22 @@ button {
   gap: 10px;
 }
 
+/* Over the hero artwork a bare white icon disappears; a cream capsule keeps it legible. */
+.header--overlay .header__actions > a:first-child {
+  display: grid;
+  place-items: center;
+}
+
+.header--overlay .header__actions > a:first-child,
+.header--overlay .menu {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgba(255, 248, 233, 0.94);
+  color: #34423b;
+  box-shadow: 0 3px 16px rgba(56, 69, 43, 0.13);
+}
+
 .header__actions > a:first-child {
   display: grid;
   place-items: center;
@@ -128,7 +145,7 @@ button {
   align-items: center;
   justify-content: center;
   min-height: 48px;
-  padding: 14px;
+  padding: 15px 14px 13px;
   border: 0;
   border-radius: 16px;
   font-size: 15px;
@@ -883,6 +900,7 @@ h2 {
 }
 
 .book {
+  position: relative;
   border-radius: 22px;
   text-align: center;
   transition: transform 0.2s ease;
@@ -903,6 +921,32 @@ h2 {
   box-shadow: 3px 8px 7.5px rgba(48, 61, 43, 0.16);
 }
 
+.book__chip {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 5px 10px 3px;
+  border-radius: 999px;
+  background: #7c5cd6;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.book--library .book__chip {
+  top: 18px;
+  left: 18px;
+}
+
+.book__cover--empty {
+  display: grid;
+  place-items: center;
+  font-size: 44px;
+  background: linear-gradient(160deg, #e8e0fa, #f4eefc);
+}
+
 .book h3 {
   margin: 0 0 5px;
   font-size: 19px;
@@ -910,12 +954,16 @@ h2 {
 
 .book p {
   margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
 }
 
 .audio {
   display: inline-block;
   margin-top: 10px;
-  padding: 4px 10px;
+  padding: 5px 10px 3px;
   border-radius: 14px;
   background: #edf1e5;
   color: #397653;
@@ -977,6 +1025,39 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.library-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.library-kinds__pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  /* 1px down: the font reserves descender space these labels never use. */
+  padding: 11px 18px 9px;
+  border: 1px solid #dde7db;
+  border-radius: 999px;
+  background: #fff;
+  color: #397653;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.library-kinds__pill:hover {
+  border-color: #b9d4bf;
+}
+
+.library-kinds__pill--active {
+  border-color: #397653;
+  background: #397653;
+  color: #fff;
 }
 
 .library-heading {
@@ -1072,7 +1153,8 @@ h2 {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 9px 18px 9px 19px;
+  /* 1px down: the font reserves descender space these labels never use. */
+  padding: 10px 18px 8px 19px;
   border: 1px solid #dde7db;
   border-radius: 22px;
   background: #fffdf8;
@@ -1201,7 +1283,7 @@ h2 {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 0 20px;
+  padding: 1px 20px 0;
   border: 0;
   border-radius: 23px;
   background: #e8f4e9;
@@ -1218,11 +1300,13 @@ h2 {
 }
 
 .book-grid--library {
-  display: flex;
-  align-items: stretch;
-  flex-wrap: wrap;
-  gap: 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
 }
+
+
+
 
 .library-pagination {
   display: flex;
@@ -1266,13 +1350,12 @@ h2 {
 
 .book--library {
   display: flex;
-  width: 220px;
+  width: auto;
   min-height: 256px;
-  height: auto;
-  flex: 0 0 auto;
+  height: 100%;
   flex-direction: column;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
   padding: 12px 12px 16px;
   background: #fff8ec;
   box-shadow: 0 6px 20px rgba(51, 77, 56, 0.08);
@@ -1280,7 +1363,7 @@ h2 {
 }
 
 .book--library .book__cover {
-  width: 196px;
+  width: 100%;
   height: 170px;
   flex: 0 0 auto;
   aspect-ratio: auto;
@@ -1289,20 +1372,31 @@ h2 {
   box-shadow: none;
 }
 
+.book--library .book__price {
+  margin-top: auto;
+}
+
 .book--library .book__text {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .book--library h3 {
+  display: -webkit-box;
   margin: 0;
+  overflow: hidden;
   font-size: 16px;
   line-height: 22px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .book--library p {
   margin: 0;
+  justify-content: flex-start;
   font-size: 12px;
   line-height: 16px;
 }
@@ -1559,7 +1653,7 @@ h2 {
 
 .detail-tag {
   min-height: 35px;
-  padding: 7px 14px;
+  padding: 8px 14px 6px;
 }
 
 .detail-tag--butter {
@@ -2326,10 +2420,15 @@ h2 {
 }
 
 /* Paid book badge */
+.book__price--free {
+  background: #e7f3e9;
+  color: #397653;
+}
+
 .book__price {
   display: inline-block;
   margin-top: 10px;
-  padding: 4px 10px;
+  padding: 5px 10px 3px;
   border-radius: 14px;
   background: #ffe8c7;
   color: #8a5316;

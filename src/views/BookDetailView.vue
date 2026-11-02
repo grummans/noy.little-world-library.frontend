@@ -178,10 +178,9 @@ watch(
             <BaseButton
               v-else
               class="detail-read"
-              disabled
-              title="Thanh toán sẽ mở ở bước tiếp theo"
+              :to="`/checkout?book=${book.slug}`"
             >
-              <Lock :size="18" /> Sách trả phí · {{ formatPrice(book) }}
+              <Lock :size="18" /> Mua sách · {{ formatPrice(book) }}
             </BaseButton>
             <button
               type="button"

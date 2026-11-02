@@ -24,15 +24,14 @@ export function cardToBook(card: Card, tagNames: Map<string, string>): Book {
 
   return {
     kind: card.kind,
+    bookCount: card.kind === 'bundle' ? (card.book_count ?? 0) : undefined,
     slug: card.slug,
     title: card.title,
     cover: card.cover_url,
     epubUrl: '',
-    // A bundle has no topic of its own: say how many books it contains instead.
-    category:
-      card.kind === 'bundle'
-        ? `Gói sách · ${card.book_count ?? 0} sách`
-        : ((firstTag && tagNames.get(firstTag)) ?? ''),
+    // A bundle takes the topic of the books inside it, so the topic filter works
+    // for both kinds.
+    category: (firstTag && tagNames.get(firstTag)) ?? '',
     ageRange: ageRange(card),
     duration: '',
     description: '',

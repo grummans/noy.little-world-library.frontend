@@ -747,7 +747,7 @@ const openEdit = () => {
   border: 1px solid #dee8db;
   background: #fff;
   border-radius: 14px;
-  padding: 7px 12px;
+  padding: 8px 12px 6px;
   font: inherit;
   font-size: 13px;
   font-weight: 700;

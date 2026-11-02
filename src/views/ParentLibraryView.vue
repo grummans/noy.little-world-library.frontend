@@ -1,5 +1,4 @@
-(card.tag_slugs[0] && tagNames.value.get(card.tag_slugs[0])) || ''const topicOf = (card: { tag_slugs: string[] }) =>
-  (card.tag_slugs[0] && tagNames.value.get(card.tag_slugs[0])) || ''<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import AppHeader from '../components/app/AppHeader.vue'

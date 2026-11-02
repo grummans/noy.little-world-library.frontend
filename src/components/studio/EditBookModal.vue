@@ -471,7 +471,7 @@ const save = async () => {
   color: #397653;
   font-weight: 700;
   font-size: 12px;
-  padding: 2px 10px;
+  padding: 3px 10px 1px;
   border-radius: 999px;
 }
 
@@ -533,7 +533,7 @@ const save = async () => {
   border: 1px solid #dee8db;
   background: #fff;
   border-radius: 999px;
-  padding: 6px 14px;
+  padding: 7px 14px 5px;
   font: inherit;
   font-size: 13px;
   font-weight: 700;
@@ -605,7 +605,7 @@ const save = async () => {
   border: 1px solid #dee8db;
   background: #fff;
   border-radius: 999px;
-  padding: 7px 16px;
+  padding: 8px 16px 6px;
   font: inherit;
   font-size: 13px;
   font-weight: 700;
