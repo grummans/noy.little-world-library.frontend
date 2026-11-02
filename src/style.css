@@ -1093,9 +1093,10 @@ h2 {
 
 .search-field {
   display: flex;
-  width: 320px;
+  width: auto;
   height: 58px;
-  flex: 0 0 320px;
+  min-width: 320px;
+  flex: 1 1 320px;
   align-items: center;
   gap: 12px;
   padding: 0 18px;
@@ -1300,9 +1301,10 @@ h2 {
 }
 
 .book-grid--library {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 20px;
+  display: flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 24px;
 }
 
 
@@ -1350,9 +1352,10 @@ h2 {
 
 .book--library {
   display: flex;
-  width: auto;
+  width: 220px;
   min-height: 256px;
-  height: 100%;
+  height: auto;
+  flex: 0 0 auto;
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
