@@ -57,8 +57,8 @@ button {
 }
 
 .header--card {
-  width: 100%;
-  margin: 0;
+  width: min(1360px, calc(100% - 48px));
+  margin: 0 auto;
   padding: 18px 24px;
   background: #fff;
   border-radius: 24px;
@@ -1838,7 +1838,7 @@ h2 {
   }
 
   .header--card {
-    width: 100%;
+    width: calc(100% - 32px);
     padding: 14px 16px;
   }
 

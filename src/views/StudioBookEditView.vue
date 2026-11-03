@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ApiError } from '../api/client'
+import AppHeader from '../components/app/AppHeader.vue'
 import ConfirmDialog from '../components/app/ConfirmDialog.vue'
 import AppToast from '../components/app/AppToast.vue'
 import { useToast } from '../composables/useToast'
@@ -150,6 +151,7 @@ const backToStudio = () => void router.push('/studio')
 
 <template>
   <div class="edit">
+    <AppHeader />
     <div class="edit__shell">
       <header class="edit__top">
         <RouterLink class="edit__back" to="/studio">← Sách của tôi</RouterLink>

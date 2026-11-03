@@ -8,6 +8,7 @@ import {
   unpublishBundle,
   type TeacherBundle,
 } from '../api/teacher'
+import AppHeader from '../components/app/AppHeader.vue'
 import BundleModal from '../components/studio/BundleModal.vue'
 import ConfirmDialog from '../components/app/ConfirmDialog.vue'
 import AppToast from '../components/app/AppToast.vue'
@@ -99,6 +100,7 @@ const money = (value: number) => `${value.toLocaleString('vi-VN')}đ`
 
 <template>
   <div class="bundles">
+    <AppHeader />
     <div class="bundles__shell">
       <header class="bundles__top">
         <RouterLink class="bundles__back" to="/studio">← Sách của tôi</RouterLink>

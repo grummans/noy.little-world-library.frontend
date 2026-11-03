@@ -152,7 +152,7 @@ const onSaved = (updated: TeacherBook) => {
 
 <template>
   <div class="studio">
-    <AppHeader variant="card" />
+    <AppHeader />
 
     <div class="studio__shell">
       <section class="studio__header">

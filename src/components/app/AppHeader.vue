@@ -9,7 +9,7 @@ withDefaults(
     variant?: 'overlay' | 'card'
     contrast?: 'light' | 'dark'
   }>(),
-  { variant: 'overlay', contrast: 'light' },
+  { variant: 'overlay', contrast: 'dark' },
 )
 
 const open = ref(false)

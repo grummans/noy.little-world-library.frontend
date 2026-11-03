@@ -75,7 +75,7 @@ const tabs: { value: Tab; label: string }[] = [
 
 <template>
   <div class="shelf-page">
-    <AppHeader variant="card" />
+    <AppHeader />
 
     <main class="shelf">
       <header class="shelf__intro">

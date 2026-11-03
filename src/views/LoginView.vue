@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Eye, EyeOff } from 'lucide-vue-next'
+import AppHeader from '../components/app/AppHeader.vue'
 import { ApiError } from '../api/client'
 import type { Role, SessionUser } from '../api/auth'
 import { homeFor, useSession } from '../composables/useSession'
@@ -108,10 +109,7 @@ const finishRegister = async () => {
 
 <template>
   <div class="auth">
-    <header class="auth__top">
-      <RouterLink class="auth__brand" to="/">Little Wonder Library</RouterLink>
-      <RouterLink class="auth__back" to="/library">← Về thư viện sách</RouterLink>
-    </header>
+    <AppHeader />
 
     <div class="auth__grid">
       <section class="auth__welcome" aria-labelledby="auth-welcome-title">
@@ -280,40 +278,14 @@ const finishRegister = async () => {
 .auth {
   min-height: 100vh;
   background: #fff8ec;
-  padding: 22px 40px 40px;
+  padding: 0 0 40px;
   font-family: "Nunito", system-ui, sans-serif;
 }
 
-.auth__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  background: #fff;
-  border-radius: 24px;
-  padding: 20px 36px;
-  min-height: 76px;
-}
-
-.auth__brand {
-  color: #225c45;
-  font-weight: 700;
-  font-size: 25px;
-  text-decoration: none;
-}
-
-.auth__back {
-  color: #347b57;
-  font-size: 15px;
-  text-decoration: none;
-}
-
-.auth__back:hover {
-  text-decoration: underline;
-}
 
 .auth__grid {
   display: grid;
+  padding: 0 40px;
   grid-template-columns: minmax(0, 590px) minmax(0, 590px);
   gap: 60px;
   justify-content: center;
@@ -540,8 +512,8 @@ const finishRegister = async () => {
 }
 
 @media (max-width: 640px) {
-  .auth {
-    padding: 12px 16px 24px;
+  .auth__grid {
+    padding: 0 16px;
   }
 
   .auth__card {
