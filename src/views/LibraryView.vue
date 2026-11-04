@@ -208,9 +208,12 @@ watch(
           <BaseButton to="/admin">Quản lý tủ sách <span aria-hidden="true">→</span></BaseButton>
         </div>
         <div class="adult-banner__art" aria-hidden="true">
-          <span class="flower">
-            <i v-for="petal in 5" :key="petal" />
-          </span>
+          <img
+            class="adult-banner__img"
+            src="/images/cozy_bear_storytime_nook.png"
+            alt=""
+            loading="lazy"
+          />
         </div>
       </aside>
     </main>

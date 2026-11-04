@@ -62,8 +62,8 @@ const router = createRouter({
   ],
 })
 
-// Signed-out visitors are sent to the login page and brought back afterwards. A user
-// with the wrong role is sent to their own home instead of seeing a broken screen.
+// Signed-out visitors are sent to the login page (and land on the homepage once they sign
+// in). A user with the wrong role is sent to their own home instead of a broken screen.
 //
 // The session is re-checked on every guarded navigation (force): a cookie can expire or
 // change in another tab, and a cached user would otherwise pass this guard forever.
@@ -79,9 +79,12 @@ router.beforeEach(async (to) => {
     return true
   }
   if (!user) {
-    return { path: '/login', query: { redirect: to.fullPath } }
+    // replace: the bounced URL must not come back as a Back-button trap behind the login page.
+    return { path: '/login', replace: true }
   }
   if (user.role !== requiredRole) {
+    // Wrong screen for this role: send them to the one their role lives on, not the marketing
+    // homepage a sign-in lands on.
     return { path: user.role === 'teacher' ? '/studio' : '/parent/library' }
   }
   return true

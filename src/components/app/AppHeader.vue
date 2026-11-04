@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Menu, Search, X } from 'lucide-vue-next'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
+import ConfirmDialog from './ConfirmDialog.vue'
 import { useSession } from '../../composables/useSession'
 
 withDefaults(
@@ -13,22 +14,25 @@ withDefaults(
 )
 
 const open = ref(false)
-const route = useRoute()
 const router = useRouter()
 const session = useSession()
 
 // "Dành cho người lớn" left the header by request: adults now arrive through Đăng nhập.
-const links = [
-  { label: 'Trang chủ', to: '/' },
-  { label: 'Thư viện sách', to: '/library' },
-  { label: 'Góc vui học', to: '/play' },
-  { label: 'Về chúng tôi', to: '/about' },
-]
+// Teachers stay in their workspace; the public catalog and future play area are for parents/children.
+const links = computed(() => {
+  return [
+    { label: 'Trang chủ', to: '/' },
+    ...(session.user.value?.role === 'teacher'
+      ? [{ label: 'Teacher Studio', to: '/studio' }]
+      : [
+          { label: 'Thư viện sách', to: '/library' },
+          { label: 'Góc vui học', to: '/play' },
+        ]),
+    { label: 'Về chúng tôi', to: '/about' },
+  ]
+})
 
-const loginTarget = computed(() => ({
-  path: '/login',
-  query: { redirect: route.fullPath },
-}))
+const loginTarget = '/login'
 
 const signingOut = ref(false)
 
@@ -107,16 +111,43 @@ onBeforeUnmount(() => {
   window.clearTimeout(closeTimer)
 })
 
+// A click that writes nothing is fine, but signing out is not undoable for the person, so
+// it asks first — same dialog the studio uses everywhere else.
+const confirmSignOut = ref(false)
+const signOutError = ref('')
+const signOutMessage = computed(
+  () => signOutError.value || 'Bạn sẽ cần đăng nhập lại để xem tủ sách và đơn hàng.',
+)
+
+const requestSignOut = () => {
+  closeUserMenu()
+  open.value = false
+  signOutError.value = ''
+  confirmSignOut.value = true
+}
+
+const cancelSignOut = () => {
+  confirmSignOut.value = false
+  signOutError.value = ''
+  // The menu closed when the dialog opened, so the keyboard goes back to its pill — after a
+  // tick, so the dialog's own focus restore (to the now-hidden menu item) runs first.
+  void nextTick(() => userMenu.value?.querySelector<HTMLElement>('button')?.focus())
+}
+
 const signOut = async () => {
   if (signingOut.value) return
   signingOut.value = true
+  signOutError.value = ''
   try {
     await session.logout()
-    open.value = false
-    if (route.path === '/login') await router.replace('/')
+    confirmSignOut.value = false
+    // replace: the screen behind belongs to the signed-out user, and Back must not return to it.
+    await router.replace('/login')
   } catch (err) {
-    // Keep the user signed in: the session is still valid server-side.
+    // Keep the user signed in (the session is still valid server-side) and say so in the
+    // dialog, which stays open so the failure is not silent and can be retried.
     console.warn('Đăng xuất thất bại', err)
+    signOutError.value = 'Không đăng xuất được. Kiểm tra kết nối rồi thử lại.'
   } finally {
     signingOut.value = false
   }
@@ -146,7 +177,7 @@ const signOut = async () => {
     </nav>
 
     <div class="header__actions">
-      <RouterLink to="/library" aria-label="Tìm sách"
+      <RouterLink v-if="session.user.value?.role !== 'teacher'" to="/library" aria-label="Tìm sách"
         ><Search :size="21"
       /></RouterLink>
 
@@ -193,17 +224,8 @@ const signOut = async () => {
           >
             Đơn hàng
           </RouterLink>
-          <RouterLink
-            v-if="session.user.value.role === 'teacher'"
-            class="user-menu__item"
-            role="menuitem"
-            to="/studio"
-            @click="closeUserMenu"
-          >
-            Teacher Studio
-          </RouterLink>
 
-          <button type="button" class="user-menu__item user-menu__item--signout" @click="signOut">
+          <button type="button" class="user-menu__item user-menu__item--signout" @click="requestSignOut">
             Đăng xuất
           </button>
         </div>
@@ -251,20 +273,25 @@ const signOut = async () => {
       >
         Đơn hàng
       </RouterLink>
-      <RouterLink
-        v-if="session.user.value?.role === 'teacher'"
-        to="/studio"
-        @click="open = false"
-      >
-        Teacher Studio
-      </RouterLink>
       <RouterLink v-if="!session.user.value" :to="loginTarget" @click="open = false">
         Đăng nhập
       </RouterLink>
-      <button v-else type="button" class="mobile-nav__signout" @click="signOut">
+      <button v-else type="button" class="mobile-nav__signout" @click="requestSignOut">
         Đăng xuất
       </button>
     </nav>
+
+    <Teleport to="body">
+      <ConfirmDialog
+        :open="confirmSignOut"
+        :busy="signingOut"
+        title="Đăng xuất khỏi tài khoản?"
+        :message="signOutMessage"
+        confirm-label="Đăng xuất"
+        @confirm="signOut"
+        @cancel="cancelSignOut"
+      />
+    </Teleport>
   </header>
 </template>
 

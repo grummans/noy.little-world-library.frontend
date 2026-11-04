@@ -21,7 +21,7 @@ withDefaults(
       v-if="book.cover"
       class="book__cover"
       :src="book.cover"
-      :alt="`Bìa truyện ${book.title}`"
+      :alt="`Bìa sách ${book.title}`"
       loading="lazy"
     />
     <div v-else class="book__cover book__cover--empty" aria-hidden="true">📚</div>

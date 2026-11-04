@@ -29,12 +29,8 @@ const continueButton = ref<HTMLButtonElement | null>(null)
 const isRegister = computed(() => mode.value === 'register')
 const submitLabel = computed(() => (isRegister.value ? 'Đăng ký  →' : 'Đăng nhập  →'))
 
-// Only same-site paths can be redirect targets: "//evil.example" and "/login" are out.
-const SAFE_REDIRECT = /^\/(?!login($|\?|\/))/
-const safeRedirect = (raw: unknown, fallback: string): string =>
-  typeof raw === 'string' && SAFE_REDIRECT.test(raw) && !raw.startsWith('//')
-    ? raw
-    : fallback
+// Signing in lands on the homepage (teachers on the studio): the redirect back to the page
+// that bounced the visitor was retired on purpose.
 
 const messageFor = (err: unknown): string => {
   if (!(err instanceof ApiError)) return 'Có lỗi xảy ra, vui lòng thử lại.'
@@ -81,7 +77,7 @@ const submit = async () => {
     }
 
     const user = await session.login(email.value, password.value)
-    await router.replace(safeRedirect(route.query.redirect, homeFor(user)))
+    await router.replace(homeFor(user))
   } catch (err) {
     errorMessage.value = messageFor(err)
   } finally {
@@ -100,8 +96,8 @@ const finishRegister = async () => {
   registeredUser.value = null
   if (!user) return
   // A brand-new account has nothing on its shelf yet, so the homepage is the friendlier
-  // landing; an explicit ?redirect= still wins.
-  await router.replace(safeRedirect(route.query.redirect, '/'))
+  // landing.
+  await router.replace(homeFor(user))
 }
 
 </script>
@@ -113,7 +109,7 @@ const finishRegister = async () => {
 
     <div class="auth__grid">
       <section class="auth__welcome" aria-labelledby="auth-welcome-title">
-        <h1 id="auth-welcome-title">Chào mừng đến với<br />thế giới truyện nhỏ!</h1>
+        <h1 id="auth-welcome-title">Chào mừng đến với<br />thế giới sách của bé!</h1>
         <img
           class="auth__art"
           src="/images/login-artwork.jpg"

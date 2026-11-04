@@ -17,6 +17,7 @@ import {
   Volume2,
 } from "lucide-vue-next";
 import AppHeader from "../components/app/AppHeader.vue";
+import AppFooter from "../components/app/AppFooter.vue";
 import { type Book } from "../data/books";
 import { ApiError } from "../api/client";
 import { getBook, listTags, startReading } from "../api/catalog";
@@ -440,5 +441,7 @@ onBeforeUnmount(() => {
         >Về thư viện</RouterLink
       >
     </main>
+
+    <AppFooter :label="book ? book.title : 'Đọc sách'" />
   </div>
 </template>

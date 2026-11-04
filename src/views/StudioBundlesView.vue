@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { Sparkles } from 'lucide-vue-next'
 import { ApiError } from '../api/client'
 import {
+  getSales,
   listMyBundles,
   publishBundle,
   unpublishBundle,
+  type SalesItem,
   type TeacherBundle,
 } from '../api/teacher'
 import AppHeader from '../components/app/AppHeader.vue'
@@ -15,6 +18,9 @@ import AppToast from '../components/app/AppToast.vue'
 import { useToast } from '../composables/useToast'
 
 const bundles = ref<TeacherBundle[]>([])
+// Paid orders only; a bundle never splits its revenue onto the books inside it.
+const sales = ref<SalesItem[]>([])
+const salesError = ref('')
 const loading = ref(true)
 const error = ref('')
 const busyId = ref<number | null>(null)
@@ -27,10 +33,20 @@ const { message: toast, show: showToast } = useToast()
 const load = async () => {
   loading.value = true
   error.value = ''
+  salesError.value = ''
   try {
-    bundles.value = await listMyBundles()
-  } catch (err) {
-    error.value = message(err)
+    const [bundleList, salesResult] = await Promise.allSettled([listMyBundles(), getSales()])
+    if (bundleList.status === 'fulfilled') {
+      bundles.value = bundleList.value
+    } else {
+      error.value = message(bundleList.reason)
+    }
+    if (salesResult.status === 'fulfilled') {
+      sales.value = salesResult.value.bundles
+    } else {
+      // Zero sales and a broken report look identical, so say it out loud.
+      salesError.value = 'Không tải được số liệu bán hàng, các cột Đã bán và Doanh thu có thể trống.'
+    }
   } finally {
     loading.value = false
   }
@@ -96,6 +112,14 @@ const onSaved = (updated: TeacherBundle) => {
 }
 
 const money = (value: number) => `${value.toLocaleString('vi-VN')}đ`
+
+const noSale: SalesItem = { id: 0, sold: 0, revenue_vnd: 0 }
+const salesByBundle = computed(() => {
+  const map = new Map<number, SalesItem>()
+  for (const item of sales.value) map.set(item.id, item)
+  return map
+})
+const salesFor = (bundleID: number) => salesByBundle.value.get(bundleID) ?? noSale
 </script>
 
 <template>
@@ -103,24 +127,34 @@ const money = (value: number) => `${value.toLocaleString('vi-VN')}đ`
     <AppHeader />
     <div class="bundles__shell">
       <header class="bundles__top">
-        <RouterLink class="bundles__back" to="/studio">← Sách của tôi</RouterLink>
-        <p class="bundles__brand">Little Wonder / Teacher Studio</p>
+        <nav class="bundles__breadcrumb" aria-label="Breadcrumb">
+          <RouterLink to="/">Trang chủ</RouterLink>
+          <span aria-hidden="true">/</span>
+          <RouterLink to="/studio">Teacher Studio</RouterLink>
+          <span aria-hidden="true">/</span>
+          <span>Gói sách</span>
+        </nav>
+        <p class="bundles__eyebrow">
+          <Sparkles :size="14" aria-hidden="true" /> LITTLE WONDER LIBRARY
+        </p>
+        <h1 class="bundles__page-title">Gói sách</h1>
+        <p class="bundles__subtitle">
+          Gom các sách đã xuất bản thành một gói trả phí. Người mua đọc được toàn bộ sách trong gói.
+        </p>
       </header>
 
-      <section class="bundles__head">
-        <div>
-          <h1>Gói sách</h1>
-          <p class="bundles__subtitle">
-            Gom các sách đã xuất bản thành một gói trả phí. Người mua đọc được toàn bộ sách trong gói.
-          </p>
-        </div>
+      <div class="bundles__head">
         <button type="button" class="bundles__primary" @click="creating = true">
           ＋ Tạo gói sách
         </button>
-      </section>
+      </div>
 
       <p v-if="actionError" class="bundles__state bundles__state--error" role="alert">
         {{ actionError }}
+      </p>
+
+      <p v-if="salesError" class="bundles__state bundles__state--warning" role="alert">
+        {{ salesError }}
       </p>
 
       <p v-if="loading" class="bundles__state" role="status">Đang tải gói sách…</p>
@@ -147,6 +181,8 @@ const money = (value: number) => `${value.toLocaleString('vi-VN')}đ`
               <th scope="col">SỐ SÁCH</th>
               <th scope="col">GIÁ</th>
               <th scope="col">TRẠNG THÁI</th>
+              <th scope="col">ĐÃ BÁN</th>
+              <th scope="col">DOANH THU</th>
               <th scope="col">THAO TÁC</th>
             </tr>
           </thead>
@@ -168,6 +204,8 @@ const money = (value: number) => `${value.toLocaleString('vi-VN')}đ`
                   {{ bundle.status === 'published' ? 'Đã xuất bản' : 'Bản nháp' }}
                 </span>
               </td>
+              <td class="bundles__cell">{{ salesFor(bundle.id).sold }}</td>
+              <td class="bundles__cell">{{ money(salesFor(bundle.id).revenue_vnd) }}</td>
               <td>
                 <span class="bundles__actions">
                   <button
@@ -248,46 +286,52 @@ const money = (value: number) => `${value.toLocaleString('vi-VN')}đ`
   padding: 24px 24px 48px;
 }
 
+/* Same block shape and type scale as the About page header: breadcrumb, brand eyebrow,
+   page title, then one line of muted context — no card wrapping it. */
 .bundles__top {
   display: flex;
-  align-items: baseline;
-  gap: 16px;
-  flex-wrap: wrap;
-  background: #fff;
-  border-radius: 18px;
-  padding: 18px;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.bundles__brand {
+.bundles__breadcrumb {
+  display: flex;
+  gap: 16px;
+  color: #77847c;
+  font-size: 14px;
+}
+
+.bundles__breadcrumb a:hover {
+  color: #397653;
+}
+
+.bundles__eyebrow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
   margin: 0;
   color: #397653;
+  font-size: 13px;
   font-weight: 700;
-  font-size: 21px;
+  letter-spacing: 0.78px;
 }
 
-.bundles__back {
-  color: #397653;
-  font-size: 14px;
+.bundles__page-title {
+  margin: 0;
+  color: #2e4a38;
+  font-size: 40px;
   font-weight: 700;
-  text-decoration: none;
+  line-height: 1.12;
 }
 
 .bundles__head {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  flex-wrap: wrap;
-  margin: 24px 0 16px;
-}
-
-.bundles__head h1 {
-  margin: 0;
-  font-size: 30px;
+  justify-content: flex-end;
+  margin: 20px 0 16px;
 }
 
 .bundles__subtitle {
-  margin: 6px 0 0;
+  margin: 0;
   color: #77847c;
   font-size: 14px;
   max-width: 640px;
@@ -403,5 +447,9 @@ const money = (value: number) => `${value.toLocaleString('vi-VN')}đ`
 
 .bundles__state--error {
   color: #b3261e;
+}
+
+.bundles__state--warning {
+  color: #8a6d1f;
 }
 </style>

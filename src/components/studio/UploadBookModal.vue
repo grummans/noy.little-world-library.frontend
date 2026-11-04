@@ -651,6 +651,12 @@ const openEdit = () => {
   margin-top: 22px;
 }
 
+/* Step 1 has no .upload__actions wrapper, so its button needs the gap the wrapper gives
+   the other steps; without it the button sits flush on the drop zone. */
+.upload__body > .upload__primary {
+  margin-top: 18px;
+}
+
 .upload__drop {
   border: 1px dashed #397653;
   background: #f5faf2;

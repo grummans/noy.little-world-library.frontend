@@ -10,6 +10,12 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+
+# The media origin is baked into the CSP at build time (see vite.config.ts).
+# Defaults to the production origin so CI builds outside staging are unchanged.
+ARG VITE_MEDIA_ORIGIN=https://media.littleworld.cloud
+ENV VITE_MEDIA_ORIGIN=${VITE_MEDIA_ORIGIN}
+
 RUN npm run build
 
 # ---- Runtime stage --------------------------------------------------------

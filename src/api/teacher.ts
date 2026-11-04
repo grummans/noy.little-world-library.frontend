@@ -28,6 +28,28 @@ export interface TeacherBook {
 
 export const listMyBooks = () => apiFetch<TeacherBook[]>('/api/teacher/books')
 
+// Paid sales only: free books never create an order, so they stay at zero.
+export interface SalesItem {
+  id: number
+  sold: number
+  revenue_vnd: number
+}
+
+export interface SalesTotals {
+  orders: number
+  revenue_vnd: number
+  book_revenue_vnd: number
+  bundle_revenue_vnd: number
+}
+
+export interface SalesSummary {
+  totals: SalesTotals
+  books: SalesItem[]
+  bundles: SalesItem[]
+}
+
+export const getSales = () => apiFetch<SalesSummary>('/api/teacher/sales')
+
 export const getMyBook = (id: number) => apiFetch<TeacherBook>(`/api/teacher/books/${id}`)
 
 export const publishBook = (id: number) =>

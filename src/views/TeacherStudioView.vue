@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { Sparkles } from 'lucide-vue-next'
 import AppHeader from '../components/app/AppHeader.vue'
 import UploadBookModal from '../components/studio/UploadBookModal.vue'
 import EditBookModal from '../components/studio/EditBookModal.vue'
@@ -10,10 +11,14 @@ import { useToast } from '../composables/useToast'
 
 import { ApiError } from '../api/client'
 import {
+  getSales,
   listMyBooks,
   listTopics,
   publishBook,
   unpublishBook,
+  type SalesItem,
+  type SalesSummary,
+  type SalesTotals,
   type TeacherBook,
 } from '../api/teacher'
 import type { Tag } from '../api/catalog'
@@ -26,6 +31,8 @@ const topics = ref<Tag[]>([])
 const loading = ref(true)
 const error = ref('')
 const topicsError = ref('')
+const sales = ref<SalesSummary | null>(null)
+const salesError = ref('')
 const search = ref('')
 const busyId = ref<number | null>(null)
 const actionError = ref('')
@@ -34,12 +41,33 @@ const editing = ref<TeacherBook | null>(null)
 const pendingToggle = ref<TeacherBook | null>(null)
 const { message: toast, show: showToast } = useToast()
 
+const noSales: SalesTotals = { orders: 0, revenue_vnd: 0, book_revenue_vnd: 0, bundle_revenue_vnd: 0 }
+const noItem: SalesItem = { id: 0, sold: 0, revenue_vnd: 0 }
+
+const salesTotals = computed(() => sales.value?.totals ?? noSales)
+
+const salesByBook = computed(() => {
+  const map = new Map<number, SalesItem>()
+  for (const item of sales.value?.books ?? []) map.set(item.id, item)
+  return map
+})
+
+// A book's own sales exclude bundle purchases: that money stays on the bundle.
+const salesFor = (bookID: number) => salesByBook.value.get(bookID) ?? noItem
+
+const money = (value: number) => `${value.toLocaleString('vi-VN')}đ`
+
 const load = async () => {
   loading.value = true
   error.value = ''
   topicsError.value = ''
+  salesError.value = ''
 
-  const [bookResult, topicResult] = await Promise.allSettled([listMyBooks(), listTopics()])
+  const [bookResult, topicResult, salesResult] = await Promise.allSettled([
+    listMyBooks(),
+    listTopics(),
+    getSales(),
+  ])
 
   if (bookResult.status === 'fulfilled') {
     books.value = bookResult.value
@@ -52,6 +80,13 @@ const load = async () => {
   } else {
     // A topic list that failed must not look like "these books have no topic".
     topicsError.value = 'Không tải được danh sách chủ đề, cột Chủ đề có thể trống.'
+  }
+
+  if (salesResult.status === 'fulfilled') {
+    sales.value = salesResult.value
+  } else {
+    // Zero revenue and a broken report look identical, so say it out loud.
+    salesError.value = 'Không tải được số liệu bán hàng, các cột Đã bán và Doanh thu có thể trống.'
   }
 
   loading.value = false
@@ -155,10 +190,18 @@ const onSaved = (updated: TeacherBook) => {
     <AppHeader />
 
     <div class="studio__shell">
-      <section class="studio__header">
-        <p class="studio__brand">Little Wonder / Teacher Studio</p>
+      <header class="studio__header">
+        <nav class="studio__breadcrumb" aria-label="Breadcrumb">
+          <RouterLink to="/">Trang chủ</RouterLink>
+          <span aria-hidden="true">/</span>
+          <span>Teacher Studio</span>
+        </nav>
+        <p class="studio__eyebrow">
+          <Sparkles :size="14" aria-hidden="true" /> LITTLE WONDER LIBRARY
+        </p>
+        <h1 class="studio__title">Teacher Studio</h1>
         <p class="studio__greeting">Xin chào, {{ greetingName }} 👋</p>
-      </section>
+      </header>
 
       <div class="studio__layout">
         <nav class="studio__sidebar" aria-label="Không gian giáo viên">
@@ -173,7 +216,7 @@ const onSaved = (updated: TeacherBook) => {
         </nav>
 
         <main class="studio__main">
-          <h1>Sách của tôi</h1>
+          <h2>Sách của tôi</h2>
           <p class="studio__subtitle">Tải lên, chỉnh sửa và tự xuất bản sách của bạn.</p>
 
           <div class="studio__stats">
@@ -188,6 +231,29 @@ const onSaved = (updated: TeacherBook) => {
             <div class="studio__stat studio__stat--butter">
               <p class="studio__stat-value">{{ stats.drafts }}</p>
               <p class="studio__stat-label">Bản nháp</p>
+            </div>
+          </div>
+
+          <!-- Money comes from paid orders only: a bundle's revenue stays on the bundle,
+               never split onto the books inside it. -->
+          <p v-if="salesError" class="studio__hint studio__hint--warning" role="alert">
+            <span>{{ salesError }}</span>
+          </p>
+
+          <div class="studio__stats studio__stats--money">
+            <div class="studio__stat studio__stat--mint">
+              <p class="studio__stat-value">{{ money(salesTotals.revenue_vnd) }}</p>
+              <p class="studio__stat-label">
+                Tổng doanh thu · {{ salesTotals.orders }} lượt mua
+              </p>
+            </div>
+            <div class="studio__stat studio__stat--sky">
+              <p class="studio__stat-value">{{ money(salesTotals.book_revenue_vnd) }}</p>
+              <p class="studio__stat-label">Doanh thu sách lẻ</p>
+            </div>
+            <div class="studio__stat studio__stat--butter">
+              <p class="studio__stat-value">{{ money(salesTotals.bundle_revenue_vnd) }}</p>
+              <p class="studio__stat-label">Doanh thu gói sách</p>
             </div>
           </div>
 
@@ -232,6 +298,8 @@ const onSaved = (updated: TeacherBook) => {
                     <th scope="col">SÁCH</th>
                     <th scope="col">CHỦ ĐỀ</th>
                     <th scope="col">TRẠNG THÁI</th>
+                    <th scope="col">ĐÃ BÁN</th>
+                    <th scope="col">DOANH THU</th>
                     <th scope="col">THAO TÁC</th>
                   </tr>
                 </thead>
@@ -255,6 +323,10 @@ const onSaved = (updated: TeacherBook) => {
                         {{ book.status === 'published' ? 'Đã xuất bản' : 'Bản nháp' }}
                       </span>
                     </td>
+                    <td class="studio__cell">
+                      {{ salesFor(book.id).sold }}
+                    </td>
+                    <td class="studio__cell">{{ money(salesFor(book.id).revenue_vnd) }}</td>
                     <td>
                       <span class="studio__actions">
                         <button
@@ -351,21 +423,42 @@ const onSaved = (updated: TeacherBook) => {
   padding: 24px 40px 36px;
 }
 
+/* Same block shape and type scale as the About page header: breadcrumb, brand eyebrow,
+   page title, then one line of muted context — no card wrapping it. */
 .studio__header {
-  background: #fff;
-  border-radius: 18px;
-  padding: 18px;
   display: flex;
-  align-items: baseline;
-  gap: 16px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.studio__brand {
+.studio__breadcrumb {
+  display: flex;
+  gap: 16px;
+  color: #77847c;
+  font-size: 14px;
+}
+
+.studio__breadcrumb a:hover {
+  color: #397653;
+}
+
+.studio__eyebrow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
   margin: 0;
   color: #397653;
-  font-size: 22px;
+  font-size: 13px;
   font-weight: 700;
+  letter-spacing: 0.78px;
+}
+
+.studio__title {
+  margin: 0;
+  color: #2e4a38;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.12;
 }
 
 .studio__greeting {
@@ -424,7 +517,7 @@ const onSaved = (updated: TeacherBook) => {
   color: #a49c93;
 }
 
-.studio__main h1 {
+.studio__main > h2 {
   margin: 0;
   font-size: 30px;
   font-weight: 700;
@@ -632,6 +725,10 @@ const onSaved = (updated: TeacherBook) => {
     padding: 16px;
   }
 
+  .studio__title {
+    font-size: 32px;
+  }
+
   .studio__layout {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -653,12 +750,21 @@ const onSaved = (updated: TeacherBook) => {
   }
 
   .studio__stat-value {
-    font-size: 26px;
+    font-size: 22px;
   }
 
-  /* The table keeps four columns but the topic is secondary on a phone. */
+  /* Amounts are much wider than a count, so their row wraps two per line instead of
+     squeezing three cards into a phone's width. */
+  .studio__stats--money .studio__stat {
+    flex: 1 1 calc(50% - 7px);
+  }
+
+  /* Topic and the money column are secondary on a phone: the total above already says
+     how much came in, so the row keeps its sale count and its actions. */
   .studio__table th:nth-child(2),
-  .studio__table td:nth-child(2) {
+  .studio__table td:nth-child(2),
+  .studio__table th:nth-child(5),
+  .studio__table td:nth-child(5) {
     display: none;
   }
 

@@ -8,22 +8,35 @@ const props = defineProps<{
   title: string
   message?: string
   confirmLabel?: string
+  // While the action it started is still running, the answer cannot be taken back: the
+  // buttons and Escape wait for it.
+  busy?: boolean
 }>()
 const emit = defineEmits<{ confirm: []; cancel: [] }>()
 
 const card = ref<HTMLElement | null>(null)
+// Focus goes back where it came from, or the keyboard never left the dialog's opener.
+let opener: HTMLElement | null = null
 
+const cancel = () => {
+  if (!props.busy) emit('cancel')
+}
 watch(
   () => props.open,
   async (isOpen) => {
-    if (!isOpen) return
+    if (!isOpen) {
+      opener?.focus()
+      opener = null
+      return
+    }
+    opener = document.activeElement as HTMLElement | null
     await nextTick()
     card.value?.querySelector<HTMLElement>('button')?.focus()
   },
 )
 
 const onKey = (event: KeyboardEvent) => {
-  if (event.key === 'Escape' && props.open) emit('cancel')
+  if (event.key === 'Escape' && props.open) cancel()
 }
 
 watch(
@@ -40,20 +53,33 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <template>
-  <div v-if="open" class="confirm" @click.self="emit('cancel')">
+  <div v-if="open" class="confirm" @click.self="cancel">
     <section
       ref="card"
       class="confirm__card"
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="confirm-title"
+      :aria-busy="busy ? 'true' : undefined"
     >
       <h2 id="confirm-title">{{ title }}</h2>
       <p v-if="message" class="confirm__message">{{ message }}</p>
       <div class="confirm__actions">
-        <button type="button" class="confirm__secondary" @click="emit('cancel')">Quay lại</button>
-        <button type="button" class="confirm__primary" @click="emit('confirm')">
-          {{ confirmLabel ?? 'Đồng ý' }}
+        <button
+          type="button"
+          class="confirm__secondary"
+          :disabled="busy"
+          @click="cancel"
+        >
+          Quay lại
+        </button>
+        <button
+          type="button"
+          class="confirm__primary"
+          :disabled="busy"
+          @click="emit('confirm')"
+        >
+          {{ busy ? 'Đang xử lý…' : (confirmLabel ?? 'Đồng ý') }}
         </button>
       </div>
     </section>
@@ -109,6 +135,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
   cursor: pointer;
 }
 
+.confirm__primary:disabled,
+.confirm__secondary:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
 .confirm__primary {
   border: 0;
   background: #397653;

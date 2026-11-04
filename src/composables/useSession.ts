@@ -90,7 +90,7 @@ export function useSession() {
   }
 }
 
-/** Where a signed-in user belongs by default. */
+/** Where a signed-in user lands: the public homepage, or the studio for a teacher. */
 export function homeFor(user: SessionUser): string {
-  return user.role === 'teacher' ? '/studio' : '/parent/library'
+  return user.role === 'teacher' ? '/studio' : '/'
 }

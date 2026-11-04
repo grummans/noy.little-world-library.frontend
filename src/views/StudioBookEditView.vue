@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { Sparkles } from 'lucide-vue-next'
 import { ApiError } from '../api/client'
 import AppHeader from '../components/app/AppHeader.vue'
 import ConfirmDialog from '../components/app/ConfirmDialog.vue'
@@ -154,8 +155,17 @@ const backToStudio = () => void router.push('/studio')
     <AppHeader />
     <div class="edit__shell">
       <header class="edit__top">
-        <RouterLink class="edit__back" to="/studio">← Sách của tôi</RouterLink>
-        <p class="edit__brand">Little Wonder / Teacher Studio</p>
+        <nav class="edit__breadcrumb" aria-label="Breadcrumb">
+          <RouterLink to="/">Trang chủ</RouterLink>
+          <span aria-hidden="true">/</span>
+          <RouterLink to="/studio">Teacher Studio</RouterLink>
+          <span aria-hidden="true">/</span>
+          <span>Tệp sách</span>
+        </nav>
+        <p class="edit__eyebrow">
+          <Sparkles :size="14" aria-hidden="true" /> LITTLE WONDER LIBRARY
+        </p>
+        <h1 class="edit__title">Tệp sách</h1>
       </header>
 
       <p v-if="loading" class="edit__state" role="status">Đang tải sách…</p>
@@ -168,9 +178,8 @@ const backToStudio = () => void router.push('/studio')
       <section v-else-if="book" class="edit__card">
         <div class="edit__head">
           <div>
-            <h1>Tệp sách</h1>
+            <h2>{{ book.title }}</h2>
             <p class="edit__subtitle">
-              {{ book.title }} ·
               <span class="edit__chip" :class="isPublished ? 'edit__chip--on' : 'edit__chip--draft'">
                 {{ isPublished ? 'Đã xuất bản' : 'Bản nháp' }}
               </span>
@@ -274,28 +283,42 @@ const backToStudio = () => void router.push('/studio')
   padding: 24px 24px 48px;
 }
 
+/* Same block shape and type scale as the About page header: breadcrumb, brand eyebrow,
+   page title, then one line of muted context — no card wrapping it. */
 .edit__top {
   display: flex;
-  align-items: baseline;
-  gap: 16px;
-  flex-wrap: wrap;
-  background: #fff;
-  border-radius: 18px;
-  padding: 18px;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.edit__brand {
+.edit__breadcrumb {
+  display: flex;
+  gap: 16px;
+  color: #77847c;
+  font-size: 14px;
+}
+
+.edit__breadcrumb a:hover {
+  color: #397653;
+}
+
+.edit__eyebrow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
   margin: 0;
   color: #397653;
+  font-size: 13px;
   font-weight: 700;
-  font-size: 21px;
+  letter-spacing: 0.78px;
 }
 
-.edit__back {
-  color: #397653;
-  font-size: 14px;
+.edit__title {
+  margin: 0;
+  color: #2e4a38;
+  font-size: 40px;
   font-weight: 700;
-  text-decoration: none;
+  line-height: 1.12;
 }
 
 .edit__card {
@@ -316,9 +339,9 @@ const backToStudio = () => void router.push('/studio')
   flex-wrap: wrap;
 }
 
-.edit__head h1 {
+.edit__head h2 {
   margin: 0;
-  font-size: 28px;
+  font-size: 24px;
 }
 
 .edit__head-actions {
