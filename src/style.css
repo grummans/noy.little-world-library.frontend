@@ -382,6 +382,10 @@ button {
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.04em;
+  line-height: 1.45;
+  /* Notes may carry a deliberate line break (khoa above, university below). */
+  white-space: pre-line;
+  text-align: center;
 }
 
 .about-invite {

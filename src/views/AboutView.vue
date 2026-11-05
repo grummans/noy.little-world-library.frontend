@@ -5,10 +5,10 @@ import AppFooter from '../components/app/AppFooter.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
 
 const authors = [
-  { name: 'Trương Thu Huyền', initials: 'TH', note: 'K50 - Khoa GDMN' },
-  { name: 'Dương Hoài Thương', initials: 'HT', note: 'K50 - Khoa GDMN' },
-  { name: 'Bùi Thị Thanh Thảo', initials: 'TT', note: 'K50 - Khoa GDMN' },
-  { name: 'TS Vũ Kiều Anh', initials: 'KA', note: 'Khoa GDMN' },
+  { name: 'Trương Thu Huyền', initials: 'TH', note: 'Khoa Giáo dục Mầm non\nTrường Đại học Sư phạm Hà Nội 2' },
+  { name: 'Dương Hoài Thương', initials: 'HT', note: 'Khoa Giáo dục Mầm non\nTrường Đại học Sư phạm Hà Nội 2' },
+  { name: 'Bùi Thị Thanh Thảo', initials: 'TT', note: 'Khoa Giáo dục Mầm non\nTrường Đại học Sư phạm Hà Nội 2' },
+  { name: 'TS. Vũ Kiều Anh', initials: 'KA', note: 'Khoa Giáo dục Mầm non\nTrường Đại học Sư phạm Hà Nội 2' },
 ]
 </script>
 

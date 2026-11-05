@@ -266,6 +266,8 @@ jobs:
           push: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VITE_MEDIA_ORIGIN=${{ github.ref == 'refs/heads/dev' && 'https://media-staging-littleworld.duckdns.org' || 'https://media.littleworld.cloud' }}
           # The Docker exporter does not support attestations.
           provenance: false
           sbom: false
@@ -319,6 +321,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           annotations: ${{ steps.meta.outputs.annotations }}
+          build-args: |
+            VITE_MEDIA_ORIGIN=${{ github.ref == 'refs/heads/dev' && 'https://media-staging-littleworld.duckdns.org' || 'https://media.littleworld.cloud' }}
           # Attach SBOM and build-provenance attestations to the image.
           provenance: mode=max
           sbom: true

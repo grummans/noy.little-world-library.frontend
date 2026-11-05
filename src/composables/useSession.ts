@@ -20,17 +20,28 @@ const loading = ref(false)
 // Bumped by every auth action, so a slow /me response cannot overwrite a newer login.
 let generation = 0
 let loaded = false
+// The in-flight /me, so components mounting together share one request instead of firing two.
+let pending: Promise<{ user: SessionUser | null; status: SessionStatus }> | null = null
 
 export function useSession() {
   /**
    * Reads the session. Resolves the user plus a status the router can act on: a network
    * failure must not look like "signed out", or a valid session would be bounced to login.
    */
-  const check = async (force = false): Promise<{ user: SessionUser | null; status: SessionStatus }> => {
+  const check = (force = false): Promise<{ user: SessionUser | null; status: SessionStatus }> => {
     if (loaded && !force) {
-      return { user: user.value, status: user.value ? 'ok' : 'anonymous' }
+      return Promise.resolve({ user: user.value, status: user.value ? 'ok' : 'anonymous' })
     }
 
+    // On first paint the header and the page both ask for the session; the second caller
+    // joins the request already in flight rather than duplicating it.
+    pending ??= request().finally(() => {
+      pending = null
+    })
+    return pending
+  }
+
+  const request = async (): Promise<{ user: SessionUser | null; status: SessionStatus }> => {
     const mine = ++generation
     loading.value = true
     try {
