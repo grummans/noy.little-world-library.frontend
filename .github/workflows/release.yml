@@ -292,6 +292,8 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           vuln-type: os,library
+          scanners: vuln
+          limit-severities-for-sarif: true
           format: sarif
           output: trivy-image.sarif
           # Block publication when fixable HIGH or CRITICAL vulnerabilities exist.
