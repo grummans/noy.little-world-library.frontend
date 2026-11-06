@@ -13,10 +13,9 @@ import BundleDetailView from '../views/BundleDetailView.vue'
 import CheckoutView from '../views/CheckoutView.vue'
 import OrdersView from '../views/OrdersView.vue'
 import PaymentReturnView from '../views/PaymentReturnView.vue'
-import ComingSoonView from '../views/ComingSoonView.vue'
+import PlayView from '../views/PlayView.vue'
+import PlayActivityView from '../views/PlayActivityView.vue'
 import { useSession } from '../composables/useSession'
-
-const placeholder = (title: string) => ({ component: ComingSoonView, props: { title } })
 
 const router = createRouter({
   history: createWebHistory(),
@@ -57,7 +56,8 @@ const router = createRouter({
       component: StudioBundlesView,
       meta: { role: 'teacher' },
     },
-    { path: '/play', ...placeholder('Góc vui học') },
+    { path: '/play', component: PlayView },
+    { path: '/play/:slug', component: PlayActivityView },
     { path: '/admin', redirect: '/studio' },
   ],
 })
