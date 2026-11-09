@@ -212,6 +212,7 @@ const onSaved = (updated: TeacherBook) => {
           </RouterLink>
           <button type="button" class="studio__nav studio__nav--button" @click="uploadOpen = true">＋ Tải sách EPUB</button>
           <RouterLink class="studio__nav" to="/studio/bundles">◈ Gói sách</RouterLink>
+          <RouterLink class="studio__nav" to="/studio/games">🎮 Quản lý game</RouterLink>
           <span class="studio__nav studio__nav--muted">⚙ Hồ sơ &amp; cài đặt</span>
         </nav>
 

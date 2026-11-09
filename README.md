@@ -33,3 +33,7 @@ Ghi chú:
 - `nginx.conf` giữ MIME `application/epub+zip` cho file `.epub` và bật cache dài hạn
   cho asset có hash trong `/assets/`.
 - Không có backend/database trong image.
+- Ảnh gọi API bằng URL tương đối `/api`: dev do Vite proxy sang `:8080`, production do Nginx Proxy
+  Manager route `/api` về container Go (giữ same-origin cho cookie session).
+- CI/CD: `.github/workflows/release.yml` build + scan (gitleaks, CodeQL, hadolint, Trivy) rồi push
+  `ghcr.io/<repo>:{dev,main,semver,sha-*}`; PR chỉ validate, không push. Tag `v*.*.*` tạo GitHub Release.

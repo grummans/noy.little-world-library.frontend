@@ -9,6 +9,8 @@ import ParentLibraryView from '../views/ParentLibraryView.vue'
 import TeacherStudioView from '../views/TeacherStudioView.vue'
 import StudioBookEditView from '../views/StudioBookEditView.vue'
 import StudioBundlesView from '../views/StudioBundlesView.vue'
+import StudioGamesView from '../views/StudioGamesView.vue'
+import StudioGameEditView from '../views/StudioGameEditView.vue'
 import BundleDetailView from '../views/BundleDetailView.vue'
 import CheckoutView from '../views/CheckoutView.vue'
 import OrdersView from '../views/OrdersView.vue'
@@ -54,6 +56,17 @@ const router = createRouter({
     {
       path: '/studio/bundles',
       component: StudioBundlesView,
+      meta: { role: 'teacher' },
+    },
+    {
+      path: '/studio/games',
+      component: StudioGamesView,
+      meta: { role: 'teacher' },
+    },
+    {
+      // 'new' is a route rather than a modal: the editor needs a full form and a preview.
+      path: '/studio/games/:id',
+      component: StudioGameEditView,
       meta: { role: 'teacher' },
     },
     { path: '/play', component: PlayView },
