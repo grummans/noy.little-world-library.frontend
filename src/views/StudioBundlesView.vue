@@ -13,6 +13,7 @@ import {
 } from '../api/teacher'
 import AppHeader from '../components/app/AppHeader.vue'
 import BundleModal from '../components/studio/BundleModal.vue'
+import StudioSidebar from '../components/studio/StudioSidebar.vue'
 import ConfirmDialog from '../components/app/ConfirmDialog.vue'
 import AppToast from '../components/app/AppToast.vue'
 import { useToast } from '../composables/useToast'
@@ -143,6 +144,10 @@ const salesFor = (bundleID: number) => salesByBundle.value.get(bundleID) ?? noSa
         </p>
       </header>
 
+      <div class="bundles__layout">
+        <StudioSidebar />
+        <main class="bundles__main">
+
       <div class="bundles__head">
         <button type="button" class="bundles__primary" @click="creating = true">
           ＋ Tạo gói sách
@@ -244,6 +249,8 @@ const salesFor = (bundleID: number) => salesByBundle.value.get(bundleID) ?? noSa
           </tbody>
         </table>
       </div>
+        </main>
+      </div>
     </div>
 
     <ConfirmDialog
@@ -281,9 +288,18 @@ const salesFor = (bundleID: number) => salesByBundle.value.get(bundleID) ?? noSa
 }
 
 .bundles__shell {
-  max-width: 1150px;
+  /* Wide enough for the sidebar plus the table it used to fill on its own. */
+  max-width: 1440px;
   margin: 0 auto;
   padding: 24px 24px 48px;
+}
+
+/* Same two-column skeleton as the Teacher Studio screens that already had a sidebar. */
+.bundles__layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 24px;
 }
 
 /* Same block shape and type scale as the About page header: breadcrumb, brand eyebrow,
@@ -451,5 +467,11 @@ const salesFor = (bundleID: number) => salesByBundle.value.get(bundleID) ?? noSa
 
 .bundles__state--warning {
   color: #8a6d1f;
+}
+
+@media (max-width: 1024px) {
+  .bundles__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 </style>

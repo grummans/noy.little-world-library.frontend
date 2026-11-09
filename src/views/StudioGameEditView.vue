@@ -3,15 +3,16 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { Sparkles } from 'lucide-vue-next'
 import AppHeader from '../components/app/AppHeader.vue'
+import StudioSidebar from '../components/studio/StudioSidebar.vue'
 import ConfirmDialog from '../components/app/ConfirmDialog.vue'
 import AppToast from '../components/app/AppToast.vue'
 import { useToast } from '../composables/useToast'
 import { ApiError } from '../api/client'
 import {
   createActivity,
-  getActivityFacets,
   getMyActivity,
   isWordwallEmbedURL,
+  normalizeWordwallInput,
   setActivityStatus,
   updateActivity,
   uploadActivityThumbnail,
@@ -42,7 +43,6 @@ const form = ref({
 const thumbnail = ref<File | null>(null)
 const thumbnailPreview = ref('')
 const thumbnailInput = ref<HTMLInputElement | null>(null)
-const gameTypeOptions = ref<string[]>([])
 
 const saving = ref(false)
 const formError = ref('')
@@ -60,8 +60,29 @@ let previewTimer: number | undefined
 const status = computed(() => activity.value?.status ?? 'draft')
 const isPublished = computed(() => status.value === 'published')
 
-const embedValid = computed(() => isWordwallEmbedURL(form.value.embed_url))
+// The field accepts whatever the teacher copy-pastes (whole <iframe …> tag included), so every
+// check downstream works on the canonical link — even when the field text has not been rewritten.
+const embedURL = computed(() => normalizeWordwallInput(form.value.embed_url))
+const embedValid = computed(() => isWordwallEmbedURL(embedURL.value))
 const embedTouched = computed(() => form.value.embed_url.trim().length > 0)
+// A teacher copies the whole <iframe …> tag from Wordwall's Share → Embed dialog, not a URL.
+// Normalise on paste and on blur only: rewriting the field on every keystroke would eat the
+// character being typed (a trailing "?" in a URL is dropped by the rebuild).
+const applyEmbed = (raw: string) => {
+  form.value.embed_url = normalizeWordwallInput(raw)
+  return form.value.embed_url
+}
+
+const onEmbedPaste = (event: ClipboardEvent) => {
+  event.preventDefault()
+  const input = event.target as HTMLInputElement
+  input.value = applyEmbed(event.clipboardData?.getData('text') ?? input.value)
+}
+
+const onEmbedBlur = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  input.value = applyEmbed(input.value)
+}
 
 // The card preview must reflect unsaved edits, so the label comes from the form, not the row.
 const ageLabel = computed(() => {
@@ -86,7 +107,7 @@ const message = (err: unknown): string => {
     case 'slug_taken':
       return 'Đường dẫn tạo từ tên game đã tồn tại. Đổi tên game một chút rồi lưu lại.'
     case 'not_publishable':
-      return 'Cần mô tả, thể loại và URL nhúng Wordwall trước khi xuất bản.'
+      return 'Cần mô tả, thể loại và link Wordwall hợp lệ trước khi xuất bản.'
     case 'invalid_file':
       return 'Ảnh bìa không hợp lệ: cần PNG/JPG/WebP gần tỷ lệ 1.91:1 và dưới 5 MB.'
     case 'validation':
@@ -103,9 +124,6 @@ const message = (err: unknown): string => {
 }
 
 onMounted(async () => {
-  getActivityFacets()
-    .then((facets) => (gameTypeOptions.value = facets.game_types))
-    .catch(() => {})
 
   if (isNew.value) {
     savedForm.value = formSnapshot()
@@ -151,15 +169,21 @@ const warnUnload = (event: BeforeUnloadEvent) => {
   event.returnValue = ''
 }
 onMounted(() => window.addEventListener('beforeunload', warnUnload))
-onBeforeUnmount(() => window.removeEventListener('beforeunload', warnUnload))
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', warnUnload)
+  // The preview timer and the picked image outlive the page otherwise: the timer fires into
+  // a dead component and the blob URL pins the whole file in memory until a reload.
+  window.clearTimeout(previewTimer)
+  if (thumbnailPreview.value.startsWith('blob:')) URL.revokeObjectURL(thumbnailPreview.value)
+})
 
 // Same rules the API enforces, checked here so a typo is caught before a round trip.
 const localError = computed(() => {
   if (!form.value.title.trim()) return 'Cần nhập tên game.'
   if (!embedValid.value) {
     return embedTouched.value
-      ? 'URL phải có dạng https://wordwall.net/embed/<mã game>.'
-      : 'Cần nhập URL nhúng Wordwall.'
+      ? 'Không thấy link Wordwall trong nội dung đã dán. Hãy dán lại cả đoạn mã nhúng.'
+      : 'Cần dán mã nhúng hoặc link Wordwall.'
   }
   if (!form.value.game_type.trim()) return 'Cần nhập thể loại game.'
   if (skillsList.value.length > 8) return 'Tối đa 8 kỹ năng.'
@@ -181,7 +205,7 @@ const localError = computed(() => {
 const metadata = (): ActivityMetadata => ({
   title: form.value.title.trim(),
   description: form.value.description.trim(),
-  embed_url: form.value.embed_url.trim(),
+  embed_url: embedURL.value,
   game_type: form.value.game_type.trim(),
   topic: form.value.topic.trim(),
   skills: skillsList.value,
@@ -291,7 +315,7 @@ const preview = () => {
   if (!embedValid.value) return
   // Hold the validated URL: an edit while the preview is open must not retarget the src
   // or the "open on Wordwall" fallback at something the API would reject.
-  previewSrc.value = form.value.embed_url.trim()
+  previewSrc.value = embedURL.value
   previewOpen.value = true
   previewLoading.value = true
   previewFailed.value = false
@@ -339,6 +363,10 @@ const previewLoaded = () => {
         </p>
       </header>
 
+      <div class="game__page">
+        <StudioSidebar />
+        <main class="game__main">
+
       <p v-if="loading" class="game__state" role="status">Đang tải game…</p>
 
       <p v-else-if="loadError" class="game__state game__state--error" role="alert">
@@ -360,14 +388,16 @@ const previewLoaded = () => {
           </label>
 
           <label class="game__field">
-            <span>URL nhúng Wordwall *</span>
+            <span>Mã nhúng hoặc link Wordwall *</span>
             <input
               v-model="form.embed_url"
-              type="url"
-              placeholder="https://wordwall.net/embed/…"
+              type="text"
+              placeholder="Dán nguyên đoạn mã nhúng từ Wordwall"
               aria-describedby="embed-help"
               :aria-invalid="embedTouched && !embedValid"
               required
+              @paste="onEmbedPaste"
+              @blur="onEmbedBlur"
             />
           </label>
           <p
@@ -376,18 +406,19 @@ const previewLoaded = () => {
             :class="{ 'game__note--error': embedTouched && !embedValid }"
           >
             <template v-if="embedTouched && !embedValid">
-              Chỉ nhận link dạng https://wordwall.net/embed/&lt;mã game&gt;.
+              Chưa thấy link Wordwall trong nội dung vừa dán. Mở game trên Wordwall → Chia sẻ →
+              Nhúng, rồi dán lại cả đoạn mã.
             </template>
-            <template v-else>Mở game trên Wordwall → Share → Embed để lấy đúng link này.</template>
+            <template v-else>
+              Mở game trên Wordwall → Chia sẻ → Nhúng, rồi dán cả đoạn mã vào ô này — hệ thống tự
+              lấy link chuẩn.
+            </template>
           </p>
 
           <div class="game__row">
             <label class="game__field">
               <span>Thể loại *</span>
-              <input v-model="form.game_type" type="text" list="game-types" maxlength="60" required />
-              <datalist id="game-types">
-                <option v-for="type in gameTypeOptions" :key="type" :value="type" />
-              </datalist>
+              <input v-model="form.game_type" type="text" maxlength="60" required />
             </label>
             <label class="game__field">
               <span>Chủ đề</span>
@@ -538,6 +569,8 @@ const previewLoaded = () => {
         @cancel="pendingAction = null"
       />
       <AppToast :message="toast" />
+        </main>
+      </div>
     </div>
   </div>
 </template>
@@ -551,9 +584,19 @@ const previewLoaded = () => {
 }
 
 .game__shell {
-  max-width: 1040px;
+  /* Wide enough for the sidebar plus the editor and preview columns.
+     Named __page, not __layout: .game__layout is already the editor/preview grid. */
+  max-width: 1440px;
   margin: 0 auto;
   padding: 24px 24px 56px;
+}
+
+/* Same two-column skeleton as the Teacher Studio screens that already had a sidebar. */
+.game__page {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 24px;
 }
 
 .game__header {
@@ -629,6 +672,12 @@ const previewLoaded = () => {
   gap: 24px;
   margin-top: 24px;
   align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .game__page {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 900px) {

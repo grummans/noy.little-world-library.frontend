@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import { Sparkles } from 'lucide-vue-next'
 import AppHeader from '../components/app/AppHeader.vue'
 import UploadBookModal from '../components/studio/UploadBookModal.vue'
+import StudioSidebar from '../components/studio/StudioSidebar.vue'
 import EditBookModal from '../components/studio/EditBookModal.vue'
 import ConfirmDialog from '../components/app/ConfirmDialog.vue'
 import AppToast from '../components/app/AppToast.vue'
@@ -18,7 +19,6 @@ import {
   unpublishBook,
   type SalesItem,
   type SalesSummary,
-  type SalesTotals,
   type TeacherBook,
 } from '../api/teacher'
 import type { Tag } from '../api/catalog'
@@ -41,17 +41,8 @@ const editing = ref<TeacherBook | null>(null)
 const pendingToggle = ref<TeacherBook | null>(null)
 const { message: toast, show: showToast } = useToast()
 
-const noSales: SalesTotals = {
-  orders: 0,
-  revenue_vnd: 0,
-  book_revenue_vnd: 0,
-  bundle_revenue_vnd: 0,
-  books_sold: 0,
-  bundles_sold: 0,
-}
 const noItem: SalesItem = { id: 0, title: '', sold: 0, revenue_vnd: 0 }
 
-const salesTotals = computed(() => sales.value?.totals ?? noSales)
 
 const salesByBook = computed(() => {
   const map = new Map<number, SalesItem>()
@@ -100,6 +91,7 @@ const load = async () => {
 }
 
 onMounted(load)
+
 
 const loadMessage = (err: unknown): string => {
   if (!(err instanceof ApiError)) return 'Không tải được danh sách sách.'
@@ -211,18 +203,7 @@ const onSaved = (updated: TeacherBook) => {
       </header>
 
       <div class="studio__layout">
-        <nav class="studio__sidebar" aria-label="Không gian giáo viên">
-          <p class="studio__sidebar-title">KHÔNG GIAN GIÁO VIÊN</p>
-          <RouterLink class="studio__nav" to="/studio">▦ Tổng quan</RouterLink>
-          <RouterLink class="studio__nav studio__nav--active" to="/studio">
-            📚 Sách của tôi
-          </RouterLink>
-          <button type="button" class="studio__nav studio__nav--button" @click="uploadOpen = true">＋ Tải sách EPUB</button>
-          <RouterLink class="studio__nav" to="/studio/bundles">◈ Gói sách</RouterLink>
-          <RouterLink class="studio__nav" to="/studio/games">🎮 Quản lý game</RouterLink>
-          <RouterLink class="studio__nav" to="/studio/revenue">📊 Thống kê doanh thu</RouterLink>
-          <span class="studio__nav studio__nav--muted">⚙ Hồ sơ &amp; cài đặt</span>
-        </nav>
+        <StudioSidebar />
 
         <main class="studio__main">
           <h2>Sách của tôi</h2>
@@ -244,28 +225,10 @@ const onSaved = (updated: TeacherBook) => {
           </div>
 
           <!-- Money comes from paid orders only: a bundle's revenue stays on the bundle,
-               never split onto the books inside it. -->
+               never split onto the books inside it. Totals live on /studio/revenue. -->
           <p v-if="salesError" class="studio__hint studio__hint--warning" role="alert">
             <span>{{ salesError }}</span>
           </p>
-
-          <div class="studio__stats studio__stats--money">
-            <div class="studio__stat studio__stat--mint">
-              <p class="studio__stat-value">{{ money(salesTotals.revenue_vnd) }}</p>
-              <p class="studio__stat-label">
-                Tổng doanh thu · {{ salesTotals.orders }} lượt mua
-              </p>
-            </div>
-            <div class="studio__stat studio__stat--sky">
-              <p class="studio__stat-value">{{ money(salesTotals.book_revenue_vnd) }}</p>
-              <p class="studio__stat-label">Doanh thu sách lẻ</p>
-            </div>
-            <div class="studio__stat studio__stat--butter">
-              <p class="studio__stat-value">{{ money(salesTotals.bundle_revenue_vnd) }}</p>
-              <p class="studio__stat-label">Doanh thu gói sách</p>
-            </div>
-          </div>
-
           <div class="studio__toolbar">
             <label class="studio__search">
               <span class="sr-only">Tìm theo tên sách</span>
@@ -483,48 +446,6 @@ const onSaved = (updated: TeacherBook) => {
   margin-top: 24px;
 }
 
-.studio__sidebar {
-  background: #fff;
-  border-radius: 20px;
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  align-self: start;
-}
-
-.studio__sidebar-title {
-  margin: 0;
-  color: #77847c;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.studio__nav--button {
-  border: 0;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
-  padding: 0;
-  font: inherit;
-}
-
-.studio__nav {
-
-  color: #34423b;
-  font-size: 15px;
-  text-decoration: none;
-}
-
-.studio__nav--active {
-  color: #397653;
-  font-weight: 700;
-}
-
-.studio__nav--muted {
-  color: #a49c93;
-}
 
 .studio__main > h2 {
   margin: 0;
@@ -742,16 +663,6 @@ const onSaved = (updated: TeacherBook) => {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .studio__sidebar {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-
-  /* Each nav item keeps its own line: wrapping them inline reads as one run-on label. */
-  .studio__nav {
-    flex: 1 1 100%;
-  }
 
   .studio__stat {
     flex: 1 1 calc(33% - 10px);
@@ -762,14 +673,8 @@ const onSaved = (updated: TeacherBook) => {
     font-size: 22px;
   }
 
-  /* Amounts are much wider than a count, so their row wraps two per line instead of
-     squeezing three cards into a phone's width. */
-  .studio__stats--money .studio__stat {
-    flex: 1 1 calc(50% - 7px);
-  }
-
-  /* Topic and the money column are secondary on a phone: the total above already says
-     how much came in, so the row keeps its sale count and its actions. */
+  /* Topic and the money column are secondary on a phone: the row keeps its sale count and
+     its actions, and per-book revenue is still on /studio/revenue. */
   .studio__table th:nth-child(2),
   .studio__table td:nth-child(2),
   .studio__table th:nth-child(5),

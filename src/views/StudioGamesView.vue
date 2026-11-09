@@ -5,6 +5,8 @@ import { Sparkles } from 'lucide-vue-next'
 import AppHeader from '../components/app/AppHeader.vue'
 import ConfirmDialog from '../components/app/ConfirmDialog.vue'
 import AppToast from '../components/app/AppToast.vue'
+import AppSelect from '../components/app/AppSelect.vue'
+import StudioSidebar from '../components/studio/StudioSidebar.vue'
 import { useToast } from '../composables/useToast'
 import { ApiError } from '../api/client'
 import {
@@ -77,6 +79,21 @@ onMounted(load)
 const gameTypes = computed(() =>
   [...new Set(games.value.map((game) => game.game_type).filter(Boolean))].sort(),
 )
+
+const statusOptions = [
+  { value: 'all', label: 'Mọi trạng thái' },
+  { value: 'published', label: 'Đã xuất bản' },
+  { value: 'draft', label: 'Bản nháp' },
+  { value: 'hidden', label: 'Đang ẩn' },
+]
+const typeOptions = computed(() => [
+  { value: '', label: 'Mọi thể loại' },
+  ...gameTypes.value.map((type) => ({ value: type, label: type })),
+])
+const sortOptions = [
+  { value: 'updated', label: 'Mới cập nhật' },
+  { value: 'title', label: 'Tên A → Z' },
+]
 
 const visibleGames = computed(() => {
   const needle = search.value.trim().toLowerCase()
@@ -172,6 +189,10 @@ const confirmStatus = async () => {
         </p>
       </header>
 
+      <div class="games__layout">
+        <StudioSidebar />
+        <main class="games__main">
+
       <div class="games__stats">
         <div class="games__stat games__stat--mint">
           <p class="games__stat-value">{{ stats.total }}</p>
@@ -200,29 +221,24 @@ const confirmStatus = async () => {
             placeholder="⌕  Tìm theo tên game, chủ đề, kỹ năng…"
           />
         </label>
-        <label class="games__field">
-          <span class="sr-only">Lọc theo trạng thái</span>
-          <select v-model="statusFilter">
-            <option value="all">Mọi trạng thái</option>
-            <option value="published">Đã xuất bản</option>
-            <option value="draft">Bản nháp</option>
-            <option value="hidden">Đang ẩn</option>
-          </select>
-        </label>
-        <label class="games__field">
-          <span class="sr-only">Lọc theo thể loại</span>
-          <select v-model="typeFilter">
-            <option value="">Mọi thể loại</option>
-            <option v-for="type in gameTypes" :key="type" :value="type">{{ type }}</option>
-          </select>
-        </label>
-        <label class="games__field">
-          <span class="sr-only">Sắp xếp</span>
-          <select v-model="sort">
-            <option value="updated">Mới cập nhật</option>
-            <option value="title">Tên A → Z</option>
-          </select>
-        </label>
+        <AppSelect
+          v-model="statusFilter"
+          class="games__field"
+          label="Lọc theo trạng thái"
+          :options="statusOptions"
+        />
+        <AppSelect
+          v-model="typeFilter"
+          class="games__field"
+          label="Lọc theo thể loại"
+          :options="typeOptions"
+        />
+        <AppSelect
+          v-model="sort"
+          class="games__field"
+          label="Sắp xếp"
+          :options="sortOptions"
+        />
         <button
           v-if="filtersActive"
           type="button"
@@ -334,6 +350,8 @@ const confirmStatus = async () => {
           1.91:1.
         </p>
       </aside>
+        </main>
+      </div>
     </div>
 
     <ConfirmDialog
@@ -357,9 +375,18 @@ const confirmStatus = async () => {
 }
 
 .games__shell {
-  max-width: 1080px;
+  /* Wide enough for the sidebar plus the table it used to fill on its own. */
+  max-width: 1440px;
   margin: 0 auto;
   padding: 24px 24px 56px;
+}
+
+/* Same two-column skeleton as the Teacher Studio screens that already had a sidebar. */
+.games__layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 24px;
 }
 
 .games__header {
@@ -457,8 +484,7 @@ const confirmStatus = async () => {
   flex: 1 1 260px;
 }
 
-.games__search input,
-.games__field select {
+.games__search input {
   width: 100%;
   border: 1px solid #e3ded2;
   border-radius: 999px;
@@ -637,5 +663,10 @@ const confirmStatus = async () => {
 
 .games__hint p {
   margin: 0;
+}
+@media (max-width: 1024px) {
+  .games__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 </style>

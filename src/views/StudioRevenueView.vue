@@ -5,6 +5,8 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Sparkles } from 'lucide-vue-next'
 import AppHeader from '../components/app/AppHeader.vue'
+import AppSelect from '../components/app/AppSelect.vue'
+import StudioSidebar from '../components/studio/StudioSidebar.vue'
 import { ApiError } from '../api/client'
 import { getSales, type SalesRange, type SalesSummary } from '../api/teacher'
 
@@ -39,15 +41,23 @@ const loadMessage = (err: unknown): string => {
   return 'Không tải được số liệu doanh thu.'
 }
 
+// Only the newest request may write the screen: a slow reply for 30d must not land on top of
+// a faster one for 90d after the teacher already switched.
+let loadSeq = 0
+
 const load = async () => {
+  const seq = ++loadSeq
   loading.value = true
   error.value = ''
   try {
-    summary.value = await getSales(range.value)
+    const data = await getSales(range.value)
+    if (seq !== loadSeq) return
+    summary.value = data
   } catch (err) {
+    if (seq !== loadSeq) return
     error.value = loadMessage(err)
   } finally {
-    loading.value = false
+    if (seq === loadSeq) loading.value = false
   }
 }
 
@@ -73,9 +83,11 @@ const share = computed(() => {
   const bundle = totals.value?.bundle_revenue_vnd ?? 0
   const all = book + bundle
   if (all === 0) return { book: 0, bundle: 0, bookMoney: 0, bundleMoney: 0 }
+  // The second half is whatever the first does not use, so the two never round to 101%.
+  const bookPercent = Math.round((book / all) * 100)
   return {
-    book: Math.round((book / all) * 100),
-    bundle: Math.round((bundle / all) * 100),
+    book: bookPercent,
+    bundle: 100 - bookPercent,
     bookMoney: book,
     bundleMoney: bundle,
   }
@@ -112,34 +124,17 @@ const barHeight = (value: number) =>
               Theo dõi hiệu quả các cuốn sách và thu nhập từ thư viện của bạn.
             </p>
           </div>
-          <label class="studio__period">
-            <span class="sr-only">Khoảng thời gian</span>
-            <select v-model="range">
-              <option v-for="option in ranges" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </option>
-            </select>
-          </label>
+          <AppSelect
+            v-model="range"
+            class="studio__period"
+            label="Khoảng thời gian"
+            :options="ranges"
+          />
         </div>
       </header>
 
       <div class="studio__layout">
-        <nav class="studio__sidebar" aria-label="Không gian giáo viên">
-          <p class="studio__sidebar-title">KHÔNG GIAN GIÁO VIÊN</p>
-          <RouterLink class="studio__nav" to="/studio">▦ Tổng quan</RouterLink>
-          <RouterLink class="studio__nav" to="/studio">📚 Sách của tôi</RouterLink>
-          <RouterLink class="studio__nav" to="/studio/bundles">◈ Gói sách</RouterLink>
-          <RouterLink class="studio__nav" to="/studio/games">🎮 Quản lý game</RouterLink>
-          <span class="studio__nav studio__nav--muted">⚙ Hồ sơ &amp; cài đặt</span>
-          <p class="studio__sidebar-title studio__sidebar-title--group">BÁO CÁO</p>
-          <RouterLink class="studio__nav studio__nav--active" to="/studio/revenue">
-            📊 Thống kê doanh thu
-          </RouterLink>
-          <aside class="studio__bundle-hint">
-            <p class="studio__bundle-hint-title">GÓI SÁCH CỦA BẠN</p>
-            <p>Chỉ chọn các sách đã xuất bản do bạn tạo.</p>
-          </aside>
-        </nav>
+        <StudioSidebar />
 
         <main class="studio__main">
           <p class="studio__subtitle">Chỉ tính các đơn đã thanh toán thành công.</p>
@@ -200,6 +195,12 @@ const barHeight = (value: number) =>
                     <span class="chart__label">{{ weekLabel(week.week_start) }}</span>
                   </div>
                 </div>
+                <!-- The bars are a picture of the same numbers, so screen readers get a list. -->
+                <ul class="sr-only">
+                  <li v-for="week in trend" :key="`sr-${week.week_start}`">
+                    Tuần {{ day(week.week_start) }}: {{ money(week.revenue_vnd) }}
+                  </li>
+                </ul>
               </section>
 
               <section class="studio__card">
@@ -240,7 +241,7 @@ const barHeight = (value: number) =>
                 </header>
                 <p v-if="!topItems.length" class="studio__state">Chưa có sản phẩm nào bán được.</p>
                 <ol v-else class="top">
-                  <li v-for="(item, index) in topItems" :key="`${item.id}-${item.title}`">
+                  <li v-for="(item, index) in topItems" :key="`${item.kind}-${item.id}`">
                     <span class="top__rank">{{ String(index + 1).padStart(2, '0') }}</span>
                     <span class="top__body">
                       <span class="top__title">{{ item.title }}</span>
@@ -260,7 +261,7 @@ const barHeight = (value: number) =>
                 </header>
                 <p v-if="!summary?.recent.length" class="studio__state">Chưa có giao dịch nào.</p>
                 <ul v-else class="recent">
-                  <li v-for="order in summary.recent" :key="order.paid_at + order.title">
+                  <li v-for="(order, index) in summary.recent" :key="`${order.paid_at}-${index}`">
                     <span class="recent__date">{{ day(order.paid_at) }}</span>
                     <span class="recent__title">{{ order.title }}</span>
                     <strong class="recent__money">+{{ money(order.amount_vnd) }}</strong>
@@ -343,62 +344,6 @@ const barHeight = (value: number) =>
   margin-top: 24px;
 }
 
-.studio__sidebar {
-  background: #fff;
-  border-radius: 20px;
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  align-self: start;
-}
-
-.studio__sidebar-title {
-  margin: 0;
-  color: #77847c;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.studio__sidebar-title--group {
-  margin-top: 10px;
-}
-
-.studio__nav {
-  color: #34423b;
-  font-size: 15px;
-  text-decoration: none;
-}
-
-.studio__nav--active {
-  color: #397653;
-  font-weight: 700;
-}
-
-.studio__nav--muted {
-  color: #a49c93;
-}
-
-.studio__bundle-hint {
-  margin-top: auto;
-  border-radius: 18px;
-  padding: 16px;
-  background: #e6ddf9;
-  color: #4c4370;
-  font-size: 14px;
-}
-
-.studio__bundle-hint-title {
-  margin: 0 0 6px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.studio__bundle-hint p {
-  margin: 0;
-}
 
 /* The period picker sits on the title row, like the frame: one page title, no second one. */
 .studio__header-row {
@@ -414,15 +359,11 @@ const barHeight = (value: number) =>
   font-size: 15px;
 }
 
-.studio__period select {
-  border: 1px solid #e4dccf;
-  border-radius: 999px;
-  background: #fff;
-  padding: 10px 18px;
-  font: inherit;
-  font-size: 14px;
-  color: #34423b;
-  cursor: pointer;
+/* The picker keeps its own metrics; AppSelect reads them from these variables. */
+.studio__period {
+  --select-border: #e4dccf;
+  --select-padding: 10px 18px;
+  --select-font-size: 14px;
 }
 
 .studio__stats {
@@ -503,10 +444,14 @@ const barHeight = (value: number) =>
   gap: 10px;
   margin-top: 18px;
   min-height: 190px;
+  /* Twelve weeks do not fit a phone: the chart scrolls sideways instead of squeezing labels
+     into each other. */
+  overflow-x: auto;
+  padding-bottom: 4px;
 }
 
 .chart__column {
-  flex: 1 1 0;
+  flex: 1 0 34px;
   display: flex;
   flex-direction: column;
   align-items: center;

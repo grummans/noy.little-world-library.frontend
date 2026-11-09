@@ -121,7 +121,24 @@ export const uploadActivityThumbnail = (id: number, file: File) => {
   })
 }
 
-/** Mirrors the server rule so the editor can flag a bad link before saving. */
+/** Wordwall's share snippet points at the localized page (`/vi/embed/…`) and carries a whole
+ *  `<iframe …>` tag; rebuild just the parts the API accepts so a teacher can paste anything.
+ *  Query params are left alone on purpose: the API is the only place that decides which ones it
+ *  keeps, so one rule set cannot drift from the other. */
+export const normalizeWordwallInput = (raw: string) => {
+  const src = /<iframe[^>]*\ssrc\s*=\s*["']([^"']+)["']/i.exec(raw)?.[1] ?? raw
+  let url: URL
+  try {
+    url = new URL(src.trim())
+  } catch {
+    return raw.trim()
+  }
+  const embed = /^\/(?:[A-Za-z]{2,5}(?:[-_][A-Za-z]{2,5})?\/)?embed\/([A-Za-z0-9_-]{8,64})\/?$/.exec(url.pathname)
+  if (url.protocol !== 'https:' || url.host !== 'wordwall.net' || !embed) return src.trim()
+  const search = url.searchParams.toString()
+  return `https://wordwall.net/embed/${embed[1]}${search ? `?${search}` : ''}`
+}
+
 export const isWordwallEmbedURL = (value: string) => {
   let url: URL
   try {
@@ -131,10 +148,5 @@ export const isWordwallEmbedURL = (value: string) => {
   }
   if (url.protocol !== 'https:' || url.host !== 'wordwall.net') return false
   if (url.username || url.password || url.hash || url.port) return false
-  if (!/^\/embed\/[A-Za-z0-9_-]{8,64}$/.test(url.pathname)) return false
-  // Same allowlist and numeric values as the API, so preview and save agree.
-  return [...url.searchParams].every(
-    ([key, value]) =>
-      ['themeId', 'templateId', 'fontStackId'].includes(key) && /^\d{1,6}$/.test(value),
-  )
+  return /^\/embed\/[A-Za-z0-9_-]{8,64}$/.test(url.pathname)
 }

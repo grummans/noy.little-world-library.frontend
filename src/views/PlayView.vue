@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { PawPrint, Sparkles } from 'lucide-vue-next'
 import AppHeader from '../components/app/AppHeader.vue'
 import AppFooter from '../components/app/AppFooter.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
+import AppSelect from '../components/app/AppSelect.vue'
 import {
   activityAgeLabel,
   getActivityFacets,
@@ -29,6 +30,19 @@ const skill = ref('')
 const age = ref<number | null>(null)
 // One age slider would be worse: games declare a range, so an exact age is what filters.
 const ages = [3, 4, 5, 6, 7, 8]
+
+const typeOptions = computed(() => [
+  { value: '', label: 'Tất cả thể loại' },
+  ...facets.value.game_types.map((type) => ({ value: type, label: type })),
+])
+const skillOptions = computed(() => [
+  { value: '', label: 'Tất cả kỹ năng' },
+  ...facets.value.skills.map((name) => ({ value: name, label: name })),
+])
+const ageOptions = [
+  { value: null, label: 'Mọi độ tuổi' },
+  ...ages.map((value) => ({ value, label: `${value} tuổi` })),
+]
 
 let searchTimer: number | undefined
 
@@ -113,27 +127,18 @@ onBeforeUnmount(() => window.clearTimeout(searchTimer))
           <span>Tìm trò chơi</span>
           <input v-model="query" type="search" placeholder="Nhập tên trò chơi" />
         </label>
-        <label class="play-filters__field">
-          <span>Thể loại</span>
-          <select v-model="gameType">
-            <option value="">Tất cả thể loại</option>
-            <option v-for="type in facets.game_types" :key="type" :value="type">{{ type }}</option>
-          </select>
-        </label>
-        <label class="play-filters__field">
-          <span>Kỹ năng</span>
-          <select v-model="skill">
-            <option value="">Tất cả kỹ năng</option>
-            <option v-for="name in facets.skills" :key="name" :value="name">{{ name }}</option>
-          </select>
-        </label>
-        <label class="play-filters__field">
-          <span>Độ tuổi</span>
-          <select v-model.number="age">
-            <option :value="null">Mọi độ tuổi</option>
-            <option v-for="value in ages" :key="value" :value="value">{{ value }} tuổi</option>
-          </select>
-        </label>
+        <div class="play-filters__field">
+          <span aria-hidden="true">Thể loại</span>
+          <AppSelect v-model="gameType" label="Thể loại" :options="typeOptions" />
+        </div>
+        <div class="play-filters__field">
+          <span aria-hidden="true">Kỹ năng</span>
+          <AppSelect v-model="skill" label="Kỹ năng" :options="skillOptions" />
+        </div>
+        <div class="play-filters__field">
+          <span aria-hidden="true">Độ tuổi</span>
+          <AppSelect v-model="age" label="Độ tuổi" :options="ageOptions" />
+        </div>
         <button v-if="filtersActive()" class="play-filters__reset" type="button" @click="resetFilters">
           Xoá bộ lọc
         </button>

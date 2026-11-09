@@ -2792,10 +2792,17 @@ h2 {
   color: #77847c;
   font-size: 13px;
   font-weight: 700;
+  /* AppSelect inherits its metrics from these variables; the play filters are squarer and
+     shorter than the Teacher Studio pills. */
+  --select-radius: 12px;
+  --select-height: 40px;
+  --select-padding: 0 12px;
+  --select-border: #e2e0d4;
+  --select-font-size: 14px;
+  --select-font-weight: 400;
 }
 
-.play-filters__field input,
-.play-filters__field select {
+.play-filters__field input {
   height: 40px;
   padding: 0 12px;
   border: 1px solid #e2e0d4;

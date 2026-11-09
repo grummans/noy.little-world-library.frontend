@@ -6,6 +6,7 @@ import { ApiError } from '../api/client'
 import AppHeader from '../components/app/AppHeader.vue'
 import ConfirmDialog from '../components/app/ConfirmDialog.vue'
 import AppToast from '../components/app/AppToast.vue'
+import StudioSidebar from '../components/studio/StudioSidebar.vue'
 import { useToast } from '../composables/useToast'
 import {
   getMyBook,
@@ -168,6 +169,10 @@ const backToStudio = () => void router.push('/studio')
         <h1 class="edit__title">Tệp sách</h1>
       </header>
 
+      <div class="edit__layout">
+        <StudioSidebar />
+        <main class="edit__main">
+
       <p v-if="loading" class="edit__state" role="status">Đang tải sách…</p>
 
       <p v-else-if="loadError" class="edit__state edit__state--error" role="alert">
@@ -265,6 +270,8 @@ const backToStudio = () => void router.push('/studio')
         @cancel="pendingAction = null"
       />
       <AppToast :message="toast" />
+        </main>
+      </div>
     </div>
   </div>
 </template>
@@ -278,9 +285,18 @@ const backToStudio = () => void router.push('/studio')
 }
 
 .edit__shell {
-  max-width: 820px;
+  /* Wide enough for the sidebar plus the card it used to fill on its own. */
+  max-width: 1440px;
   margin: 0 auto;
   padding: 24px 24px 48px;
+}
+
+/* Same two-column skeleton as the Teacher Studio screens that already had a sidebar. */
+.edit__layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 24px;
 }
 
 /* Same block shape and type scale as the About page header: breadcrumb, brand eyebrow,
@@ -467,5 +483,10 @@ const backToStudio = () => void router.push('/studio')
   cursor: pointer;
   text-decoration: underline;
   margin-left: 8px;
+}
+@media (max-width: 1024px) {
+  .edit__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 </style>
