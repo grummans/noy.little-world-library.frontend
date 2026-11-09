@@ -113,7 +113,7 @@ const onSaved = (updated: TeacherBundle) => {
 
 const money = (value: number) => `${value.toLocaleString('vi-VN')}đ`
 
-const noSale: SalesItem = { id: 0, sold: 0, revenue_vnd: 0 }
+const noSale: SalesItem = { id: 0, title: '', sold: 0, revenue_vnd: 0 }
 const salesByBundle = computed(() => {
   const map = new Map<number, SalesItem>()
   for (const item of sales.value) map.set(item.id, item)

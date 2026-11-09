@@ -41,8 +41,15 @@ const editing = ref<TeacherBook | null>(null)
 const pendingToggle = ref<TeacherBook | null>(null)
 const { message: toast, show: showToast } = useToast()
 
-const noSales: SalesTotals = { orders: 0, revenue_vnd: 0, book_revenue_vnd: 0, bundle_revenue_vnd: 0 }
-const noItem: SalesItem = { id: 0, sold: 0, revenue_vnd: 0 }
+const noSales: SalesTotals = {
+  orders: 0,
+  revenue_vnd: 0,
+  book_revenue_vnd: 0,
+  bundle_revenue_vnd: 0,
+  books_sold: 0,
+  bundles_sold: 0,
+}
+const noItem: SalesItem = { id: 0, title: '', sold: 0, revenue_vnd: 0 }
 
 const salesTotals = computed(() => sales.value?.totals ?? noSales)
 
@@ -213,6 +220,7 @@ const onSaved = (updated: TeacherBook) => {
           <button type="button" class="studio__nav studio__nav--button" @click="uploadOpen = true">＋ Tải sách EPUB</button>
           <RouterLink class="studio__nav" to="/studio/bundles">◈ Gói sách</RouterLink>
           <RouterLink class="studio__nav" to="/studio/games">🎮 Quản lý game</RouterLink>
+          <RouterLink class="studio__nav" to="/studio/revenue">📊 Thống kê doanh thu</RouterLink>
           <span class="studio__nav studio__nav--muted">⚙ Hồ sơ &amp; cài đặt</span>
         </nav>
 

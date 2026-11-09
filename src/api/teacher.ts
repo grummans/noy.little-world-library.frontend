@@ -29,8 +29,10 @@ export interface TeacherBook {
 export const listMyBooks = () => apiFetch<TeacherBook[]>('/api/teacher/books')
 
 // Paid sales only: free books never create an order, so they stay at zero.
+// Paid sales only: free books never create an order, so they stay at zero.
 export interface SalesItem {
   id: number
+  title: string
   sold: number
   revenue_vnd: number
 }
@@ -40,15 +42,35 @@ export interface SalesTotals {
   revenue_vnd: number
   book_revenue_vnd: number
   bundle_revenue_vnd: number
+  books_sold: number
+  bundles_sold: number
+}
+
+// One bar of the revenue chart; week_start is a plain date (YYYY-MM-DD), not a timestamp.
+export interface SalesWeek {
+  week_start: string
+  revenue_vnd: number
+}
+
+export interface SalesOrder {
+  paid_at: string
+  title: string
+  amount_vnd: number
 }
 
 export interface SalesSummary {
   totals: SalesTotals
   books: SalesItem[]
   bundles: SalesItem[]
+  trend: SalesWeek[]
+  recent: SalesOrder[]
 }
 
-export const getSales = () => apiFetch<SalesSummary>('/api/teacher/sales')
+// The dashboard wants all-time numbers; the revenue screen asks for a period.
+export type SalesRange = '30d' | '90d' | 'all'
+
+export const getSales = (range: SalesRange = 'all') =>
+  apiFetch<SalesSummary>(`/api/teacher/sales?range=${range}`)
 
 export const getMyBook = (id: number) => apiFetch<TeacherBook>(`/api/teacher/books/${id}`)
 
