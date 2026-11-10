@@ -24,18 +24,23 @@ export interface Activity {
 
 export interface ActivityPage {
   items: Activity[]
+  /** Filtered row count, so the page can print "1-10 trong 24 trò chơi". */
+  total: number
   has_more: boolean
 }
 
 export interface ActivityFacets {
   game_types: string[]
   skills: string[]
+  /** Topics of published games; the library's category chips. */
+  topics: string[]
 }
 
 export interface ActivityQuery {
   q?: string
   game_type?: string
   skill?: string
+  topic?: string
   age?: number | null
   page?: number
   limit?: number
@@ -46,6 +51,7 @@ export const listActivities = (query: ActivityQuery = {}) => {
   if (query.q) params.set('q', query.q)
   if (query.game_type) params.set('game_type', query.game_type)
   if (query.skill) params.set('skill', query.skill)
+  if (query.topic) params.set('topic', query.topic)
   if (query.age != null) params.set('age', String(query.age))
   if (query.page) params.set('page', String(query.page))
   if (query.limit) params.set('limit', String(query.limit))
