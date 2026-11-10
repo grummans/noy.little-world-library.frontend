@@ -322,14 +322,6 @@ const confirmStatus = async () => {
                     >
                       {{ busyId === game.id ? '…' : nextStatus(game).label }}
                     </button>
-                    <RouterLink
-                      v-if="game.status === 'published'"
-                      class="games__action"
-                      :to="`/play/${game.slug}`"
-                      :aria-label="`Xem ${game.title} ở Góc vui học`"
-                    >
-                      Xem
-                    </RouterLink>
                   </span>
                 </td>
               </tr>

@@ -75,8 +75,10 @@ const router = createRouter({
       component: StudioRevenueView,
       meta: { role: 'teacher' },
     },
-    { path: '/play', component: PlayView },
-    { path: '/play/:slug', component: PlayActivityView },
+    // Góc vui học belongs to the public/parent site; a signed-in teacher who types
+    // the URL is bounced back to the Studio instead of browsing it as a teacher.
+    { path: '/play', component: PlayView, meta: { denyRole: 'teacher' } },
+    { path: '/play/:slug', component: PlayActivityView, meta: { denyRole: 'teacher' } },
     { path: '/admin', redirect: '/studio' },
   ],
 })
@@ -88,9 +90,15 @@ const router = createRouter({
 // change in another tab, and a cached user would otherwise pass this guard forever.
 router.beforeEach(async (to) => {
   const requiredRole = to.meta.role
-  if (!requiredRole) return true
+  const deniedRole = to.meta.denyRole
+  if (!requiredRole && !deniedRole) return true
 
   const { user, status } = await useSession().check(true)
+
+  if (deniedRole && user?.role === deniedRole) {
+    return { path: '/studio', replace: true }
+  }
+  if (!requiredRole) return true
 
   if (status === 'error') {
     // The API could not answer. Do not pretend the visitor is signed out; let the screen

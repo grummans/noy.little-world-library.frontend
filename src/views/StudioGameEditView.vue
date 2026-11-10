@@ -480,9 +480,6 @@ const previewLoaded = () => {
             >
               {{ isPublished ? 'Ẩn game' : 'Xuất bản' }}
             </button>
-            <RouterLink v-if="isPublished" class="game__link" :to="`/play/${activity?.slug}`">
-              Xem trong Góc vui học
-            </RouterLink>
           </div>
 
           <p class="game__note">
