@@ -38,6 +38,10 @@ const messageFor = (err: unknown): string => {
   switch (err.code) {
     case 'invalid_credentials':
       return 'Email hoặc mật khẩu không đúng.'
+    case 'wrong_role':
+      return `Tài khoản này là tài khoản ${
+        role.value === 'parent' ? 'giáo viên' : 'phụ huynh'
+      }. Hãy chọn tab ${role.value === 'parent' ? 'Giáo viên' : 'Phụ huynh'} rồi đăng nhập lại.`
     case 'email_taken':
       return 'Email này đã được đăng ký. Hãy đăng nhập thay vì tạo mới.'
     case 'validation':
@@ -76,7 +80,7 @@ const submit = async () => {
       return
     }
 
-    const user = await session.login(email.value, password.value)
+    const user = await session.login(email.value, password.value, role.value)
     await router.replace(homeFor(user))
   } catch (err) {
     errorMessage.value = messageFor(err)

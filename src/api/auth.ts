@@ -11,8 +11,10 @@ export interface SessionUser {
   role: Role
 }
 
-export const login = (email: string, password: string) =>
-  postJSON<SessionUser>('/api/auth/login', { email, password })
+// The sign-in tab is part of the credentials: the API refuses an account whose role does not
+// match the chosen tab, so it has to travel with the email and password.
+export const login = (email: string, password: string, role: Role) =>
+  postJSON<SessionUser>('/api/auth/login', { email, password, role })
 
 export const register = (displayName: string, email: string, password: string, role: Role) =>
   postJSON<SessionUser>('/api/auth/register', {

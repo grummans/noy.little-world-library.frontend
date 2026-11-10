@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ArrowLeft, Maximize, Play } from 'lucide-vue-next'
+import { Maximize, Play } from 'lucide-vue-next'
 import AppHeader from '../components/app/AppHeader.vue'
 import AppFooter from '../components/app/AppFooter.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
@@ -158,9 +158,13 @@ onBeforeUnmount(() => {
     </main>
 
     <main v-else-if="activity" class="player__shell">
-      <RouterLink class="player__back" to="/play">
-        <ArrowLeft :size="16" aria-hidden="true" /> Quay lại Góc vui học
-      </RouterLink>
+      <nav class="breadcrumbs" aria-label="Đường dẫn">
+        <RouterLink to="/">Trang chủ</RouterLink>
+        <span aria-hidden="true">/</span>
+        <RouterLink to="/play">Góc vui học</RouterLink>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">{{ activity.title }}</span>
+      </nav>
 
       <header class="player__intro">
         <h1 class="player__title">{{ activity.title }}</h1>
@@ -288,7 +292,8 @@ onBeforeUnmount(() => {
   width: min(1440px, 100%);
   min-height: 100vh;
   margin: 0 auto;
-  padding: 0 40px 48px;
+  /* Bottom spacing belongs to the footer, so the page wrapper must not add its own. */
+  padding: 0 40px;
   flex-direction: column;
   background: var(--cream);
 }
@@ -296,27 +301,18 @@ onBeforeUnmount(() => {
 .player__shell {
   display: flex;
   flex-direction: column;
+  /* Fills the viewport so the footer stays at the bottom on a short page. */
+  flex: 1;
   gap: 18px;
-}
-
-.player__back {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  align-self: flex-start;
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.player__back:hover {
-  color: var(--green);
+  /* The header is an overlay, so the page needs its own top gap; the bottom one keeps the
+   * content clear of the footer's border. */
+  padding: 24px 0 32px;
 }
 
 .player__title {
   margin: 0;
   color: var(--green-dark);
-  font-family: 'Balsamiq Sans', Nunito, sans-serif;
+  font-weight: 700;
   font-size: clamp(26px, 3vw, 38px);
   line-height: 1.15;
 }
@@ -375,7 +371,7 @@ onBeforeUnmount(() => {
 
 .stage__wordmark {
   color: rgba(47, 67, 56, 0.28);
-  font-family: 'Balsamiq Sans', Nunito, sans-serif;
+  font-weight: 700;
   font-size: clamp(26px, 3vw, 40px);
   letter-spacing: 0.16em;
 }
@@ -514,7 +510,7 @@ onBeforeUnmount(() => {
 .about__block h2 {
   margin: 0 0 8px;
   color: var(--ink);
-  font-family: 'Balsamiq Sans', Nunito, sans-serif;
+  font-weight: 700;
   font-size: 20px;
 }
 
@@ -548,7 +544,7 @@ onBeforeUnmount(() => {
 .similar h2 {
   margin: 0;
   color: var(--ink);
-  font-family: 'Balsamiq Sans', Nunito, sans-serif;
+  font-weight: 700;
   font-size: 22px;
 }
 
@@ -580,7 +576,7 @@ onBeforeUnmount(() => {
   border-radius: 12px;
   background: #efe7fb;
   color: rgba(47, 67, 56, 0.6);
-  font-family: 'Balsamiq Sans', Nunito, sans-serif;
+  font-weight: 700;
   font-size: 16px;
   letter-spacing: 0.06em;
   text-align: center;

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Search, Sparkles } from 'lucide-vue-next'
+import { RotateCcw, Search, Sparkles } from 'lucide-vue-next'
 import AppHeader from '../components/app/AppHeader.vue'
 import AppFooter from '../components/app/AppFooter.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
-import AppSelect from '../components/app/AppSelect.vue'
+import FilterSelect from '../components/ui/FilterSelect.vue'
 import {
   activityAgeLabel,
   getActivityFacets,
@@ -29,25 +29,31 @@ const query = ref('')
 const topic = ref('')
 const gameType = ref('')
 const skill = ref('')
-const age = ref<number | null>(null)
+const age = ref('')
 // Games declare a range, so an exact age is what filters them; a slider would hide matches.
 const ages = [3, 4, 5, 6, 7, 8]
 
+// Facets arrive after mount, so these must stay computed — a plain array would freeze the
+// empty list read at setup time.
 const typeOptions = computed(() => [
-  { value: '', label: 'Thể loại' },
+  { value: '', label: 'Tất cả' },
   ...facets.value.game_types.map((type) => ({ value: type, label: type })),
 ])
 const skillOptions = computed(() => [
-  { value: '', label: 'Kỹ năng' },
+  { value: '', label: 'Tất cả' },
   ...facets.value.skills.map((name) => ({ value: name, label: name })),
 ])
+const topicOptions = computed(() => [
+  { value: '', label: 'Tất cả' },
+  ...facets.value.topics.map((name) => ({ value: name, label: name })),
+])
 const ageOptions = [
-  { value: null, label: 'Tất cả' },
-  ...ages.map((value) => ({ value, label: `${value} tuổi` })),
+  { value: '', label: 'Tất cả' },
+  ...ages.map((value) => ({ value: String(value), label: `${value} tuổi` })),
 ]
 
 const filtersActive = () =>
-  Boolean(query.value.trim() || topic.value || gameType.value || skill.value || age.value !== null)
+  Boolean(query.value.trim() || topic.value || gameType.value || skill.value || age.value)
 
 // Figma pitches one game above the grid. It is only a presentation of page 1 with no
 // filters, so a filtered search never hides a result inside the panel.
@@ -88,7 +94,7 @@ const load = async (target = page.value) => {
       topic: topic.value,
       game_type: gameType.value,
       skill: skill.value,
-      age: age.value,
+      age: age.value ? Number(age.value) : null,
       page: target,
       limit: PAGE_SIZE,
     })
@@ -118,7 +124,7 @@ const resetFilters = () => {
   topic.value = ''
   gameType.value = ''
   skill.value = ''
-  age.value = null
+  age.value = ''
 }
 
 // Text is debounced; a chip or a select reloads immediately because it is one click.
@@ -148,59 +154,67 @@ onBeforeUnmount(() => window.clearTimeout(searchTimer))
     <AppHeader variant="overlay" contrast="dark" />
 
     <main class="library__shell">
+      <nav class="breadcrumbs" aria-label="Đường dẫn">
+        <RouterLink to="/">Trang chủ</RouterLink>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">Góc vui học</span>
+      </nav>
+
       <section class="library__intro" aria-labelledby="play-title">
         <h1 id="play-title">Góc vui học của bé</h1>
         <p>Khám phá trò chơi thú vị, luyện kỹ năng mỗi ngày.</p>
       </section>
 
-      <section class="filters" aria-label="Lọc trò chơi">
-        <label class="filters__search">
-          <Search :size="18" aria-hidden="true" />
-          <span class="sr-only">Tìm trò chơi</span>
-          <input v-model="query" type="search" placeholder="Tìm trò chơi theo tên hoặc chủ đề..." />
+      <div class="book-filters" role="search" aria-label="Tìm và lọc trò chơi">
+        <label class="search-field">
+          <Search class="search-field__icon" :size="20" aria-hidden="true" />
+          <span class="sr-only">Tìm trò chơi theo tên hoặc chủ đề</span>
+          <input
+            v-model="query"
+            type="search"
+            placeholder="Tìm trò chơi theo tên hoặc chủ đề..."
+            autocomplete="off"
+          />
         </label>
 
-        <span class="filters__rule" aria-hidden="true" />
-        <div class="filters__select filters__select--age">
-          <span class="filters__prefix" aria-hidden="true">Độ tuổi:</span>
-          <AppSelect v-model="age" label="Độ tuổi" :options="ageOptions" />
-        </div>
+        <FilterSelect
+          id="play-filter-age"
+          class="filter--age"
+          label="Độ tuổi"
+          :model-value="age"
+          :options="ageOptions"
+          @update:model-value="age = $event"
+        />
+        <FilterSelect
+          id="play-filter-type"
+          label="Thể loại"
+          :model-value="gameType"
+          :options="typeOptions"
+          @update:model-value="gameType = $event"
+        />
+        <FilterSelect
+          id="play-filter-skill"
+          class="filter--age"
+          label="Kỹ năng"
+          :model-value="skill"
+          :options="skillOptions"
+          @update:model-value="skill = $event"
+        />
 
-        <span class="filters__rule" aria-hidden="true" />
-        <div class="filters__select">
-          <AppSelect v-model="gameType" label="Thể loại" :options="typeOptions" />
-        </div>
+        <FilterSelect
+          id="play-filter-topic"
+          label="Chủ đề"
+          :model-value="topic"
+          :options="topicOptions"
+          @update:model-value="topic = $event"
+        />
 
-        <span class="filters__rule" aria-hidden="true" />
-        <div class="filters__select">
-          <AppSelect v-model="skill" label="Kỹ năng" :options="skillOptions" />
-        </div>
-      </section>
+        <button type="button" class="filter-reset" @click="resetFilters">
+          <span>Đặt lại bộ lọc</span>
+          <RotateCcw :size="17" aria-hidden="true" />
+        </button>
+      </div>
 
-      <ul v-if="facets.topics.length" class="chips" aria-label="Chủ đề trò chơi">
-        <li>
-          <button
-            type="button"
-            class="chip"
-            :class="{ 'chip--active': !topic }"
-            :aria-pressed="!topic"
-            @click="topic = ''"
-          >
-            Tất cả
-          </button>
-        </li>
-        <li v-for="name in facets.topics" :key="name">
-          <button
-            type="button"
-            class="chip"
-            :class="{ 'chip--active': topic === name }"
-            :aria-pressed="topic === name"
-            @click="topic = topic === name ? '' : name"
-          >
-            {{ name }}
-          </button>
-        </li>
-      </ul>
 
       <p v-if="loading" class="library__state" role="status">Đang tải trò chơi…</p>
 
@@ -318,7 +332,8 @@ onBeforeUnmount(() => window.clearTimeout(searchTimer))
   width: min(1440px, 100%);
   min-height: 100vh;
   margin: 0 auto;
-  padding: 0 40px 48px;
+  /* Bottom spacing belongs to the footer, so the page wrapper must not add its own. */
+  padding: 0 40px;
   flex-direction: column;
   background: var(--cream);
 }
@@ -326,19 +341,19 @@ onBeforeUnmount(() => window.clearTimeout(searchTimer))
 .library__shell {
   display: flex;
   flex-direction: column;
-  gap: 22px;
-}
-
-.library__intro {
-  padding: 12px 0 4px;
+  /* Fills the viewport so the footer stays at the bottom on a short page. */
+  flex: 1;
+  gap: 24px;
+  /* Breathing room above the footer's top border on both short and long pages. */
+  padding: 24px 0 32px;
 }
 
 .library__intro h1 {
   margin: 0 0 8px;
   color: var(--green-dark);
-  font-family: 'Balsamiq Sans', Nunito, sans-serif;
-  font-size: clamp(30px, 3.4vw, 44px);
-  line-height: 1.15;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.12;
 }
 
 .library__intro p {
@@ -347,73 +362,13 @@ onBeforeUnmount(() => window.clearTimeout(searchTimer))
   font-size: 16px;
 }
 
-/* Filter bar — one row, as in Figma: search, then three inline triggers. */
-.filters {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 66px;
-  padding: 8px 22px;
-  border-radius: 20px;
-  background: #fff;
-  box-shadow: 0 2px 10px rgba(57, 118, 83, 0.06);
-}
-
-.filters__search {
-  display: flex;
-  flex: 1 1 auto;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  color: var(--muted);
-}
-
-.filters__search input {
+/* Search + filters reuse the library toolbar styles from style.css, so both pages match. The
+ * toolbar itself is capped at 1196px there; here it should line up with the cards, edge to edge. */
+.book-filters {
   width: 100%;
-  padding: 8px 0;
-  border: 0;
-  background: none;
-  color: var(--ink);
-  font: inherit;
 }
 
-.filters__search:focus-within {
-  border-radius: 12px;
-  box-shadow: 0 0 0 3px rgba(57, 118, 83, 0.35);
-}
-
-.filters__rule {
-  width: 1px;
-  height: 26px;
-  background: #eae6da;
-}
-
-.filters__select {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 6px;
-  --select-border: 0;
-  --select-height: 44px;
-  --select-font-size: 15px;
-}
-
-.filters__prefix {
-  color: var(--muted);
-  font-size: 15px;
-  font-weight: 600;
-}
-
-/* Category chips. */
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
+/* "Xoá bộ lọc" in the empty state keeps the pill look. */
 .chip {
   padding: 10px 20px;
   border: 1px solid #eae6da;
@@ -429,13 +384,6 @@ onBeforeUnmount(() => window.clearTimeout(searchTimer))
 .chip:hover {
   border-color: var(--green-soft);
   background: #f4fbf6;
-}
-
-.chip--active,
-.chip--active:hover {
-  border-color: transparent;
-  background: var(--green-soft);
-  color: var(--green-dark);
 }
 
 .chip--reset {
@@ -486,7 +434,7 @@ onBeforeUnmount(() => window.clearTimeout(searchTimer))
 .featured__copy h2 {
   margin: 0;
   color: var(--ink);
-  font-family: 'Balsamiq Sans', Nunito, sans-serif;
+  font-weight: 700;
   font-size: clamp(24px, 2.4vw, 32px);
   line-height: 1.2;
 }
@@ -538,7 +486,7 @@ onBeforeUnmount(() => window.clearTimeout(searchTimer))
 .featured__motif {
   padding: 0 18px;
   color: #b4652a;
-  font-family: 'Balsamiq Sans', Nunito, sans-serif;
+  font-weight: 700;
   font-size: clamp(22px, 2.6vw, 34px);
   letter-spacing: 0.06em;
   text-align: center;
@@ -565,7 +513,7 @@ onBeforeUnmount(() => window.clearTimeout(searchTimer))
 .section-head h2 {
   margin: 0;
   color: var(--ink);
-  font-family: 'Balsamiq Sans', Nunito, sans-serif;
+  font-weight: 700;
   font-size: 22px;
 }
 
@@ -621,7 +569,7 @@ onBeforeUnmount(() => window.clearTimeout(searchTimer))
 .game__motif {
   padding: 0 10px;
   color: rgba(47, 67, 56, 0.62);
-  font-family: 'Balsamiq Sans', Nunito, sans-serif;
+  font-weight: 700;
   font-size: 15px;
   letter-spacing: 0.06em;
   text-align: center;
@@ -726,13 +674,17 @@ onBeforeUnmount(() => window.clearTimeout(searchTimer))
   .library { padding: 0 24px 40px; }
   .games { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .featured { grid-template-columns: 1fr; }
-  .filters { flex-wrap: wrap; }
-  .filters__search { flex-basis: 100%; }
-  .filters__rule { display: none; }
 }
 
 @media (max-width: 680px) {
   .games { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .library__intro h1 { font-size: 28px; }
+  /* The count sits under the title on a phone instead of squeezing onto one line. */
+  .section-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
   .pager { flex-direction: column; align-items: stretch; }
   .pager__nav { justify-content: center; }
 }

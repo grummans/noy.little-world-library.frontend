@@ -77,8 +77,8 @@ export function useSession() {
     return current
   }
 
-  const login = async (email: string, password: string) =>
-    adopt(await loginRequest(email, password))
+  const login = async (email: string, password: string, role: Role) =>
+    adopt(await loginRequest(email, password, role))
 
   const register = async (displayName: string, email: string, password: string, role: Role) =>
     adopt(await registerRequest(displayName, email, password, role))

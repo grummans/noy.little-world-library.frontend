@@ -21,6 +21,12 @@ RUN npm run build
 # ---- Runtime stage --------------------------------------------------------
 FROM nginx:stable AS runtime
 
+# Pull Debian security fixes (including zlib) into the runtime layer instead of waiting for the
+# mutable nginx:stable image tag to be refreshed.
+RUN apt-get update \
+ && apt-get upgrade -y \
+ && rm -rf /var/lib/apt/lists/*
+
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 
