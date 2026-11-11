@@ -11,8 +11,9 @@ export interface SessionUser {
   role: Role
 }
 
-// The sign-in tab is part of the credentials: the API refuses an account whose role does not
-// match the chosen tab, so it has to travel with the email and password.
+// The sign-in tab is part of the credentials: an account whose role does not match the chosen
+// tab is refused, and the API answers with the same invalid-credentials error it uses for a
+// wrong password, so a guess can never reveal which site an email belongs to.
 export const login = (email: string, password: string, role: Role) =>
   postJSON<SessionUser>('/api/auth/login', { email, password, role })
 

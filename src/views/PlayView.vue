@@ -116,7 +116,9 @@ const load = async (target = page.value) => {
 const goToPage = (target: number) => {
   if (target === page.value || target < 1 || target > pageCount.value) return
   void load(target)
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+  // The page scroll is the only motion here, so it is what the preference applies to.
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' })
 }
 
 const resetFilters = () => {
@@ -666,19 +668,50 @@ onBeforeUnmount(() => window.clearTimeout(searchTimer))
   cursor: default;
 }
 
-@media (max-width: 1200px) {
-  .games { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+/* The filter bar is the shared book-filter markup, so the responsive rules for this page
+   override it locally: on a tablet and a phone the four selects become a compact grid
+   instead of a 400px-tall stack of full-width rows. */
+@media (max-width: 1080px) {
+  .games { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .featured__art { aspect-ratio: 16 / 9; }
+
+  .book-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    min-height: 0;
+  }
+  /* min-width: 0 — the shared search field keeps a 320px floor that overflows a phone. */
+  .book-filters .search-field { grid-column: 1 / -1; min-width: 0; }
+  .book-filters .filter-wrap,
+  .book-filters .filter--age,
+  .book-filters .filter--options { width: 100%; flex: 1 1 auto; }
+  /* :deep — .filter is the button inside FilterSelect, not this component's markup. */
+  .book-filters :deep(.filter) { height: 52px; }
+  .book-filters .filter-reset {
+    grid-column: 1 / -1;
+    width: 100%;
+    height: 52px;
+    flex: 1 1 auto;
+  }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 900px) {
   .library { padding: 0 24px 40px; }
-  .games { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  /* Below this width the featured panel stacks: two columns leave the copy too narrow. */
   .featured { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 680px) {
   .games { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .library__intro h1 { font-size: 28px; }
+  .library { padding: 0 18px 32px; }
+  .library__intro h1 { font-size: 26px; }
+  .library__intro p { font-size: 15px; }
+  .featured { padding: 22px 20px; gap: 18px; border-radius: 20px; }
+  .featured__cta { width: 100%; text-align: center; }
+  .game { padding: 10px; gap: 8px; }
+  .game__cta { min-height: 44px; display: flex; align-items: center; justify-content: center; }
+
   /* The count sits under the title on a phone instead of squeezing onto one line. */
   .section-head {
     flex-direction: column;
@@ -686,6 +719,16 @@ onBeforeUnmount(() => window.clearTimeout(searchTimer))
     gap: 4px;
   }
   .pager { flex-direction: column; align-items: stretch; }
-  .pager__nav { justify-content: center; }
+  /* Seven 44px controls cannot fit 284px of content at 320px, so the row wraps. */
+  .pager__nav { flex-wrap: wrap; justify-content: center; }
+  .pager__page,
+  .pager__step { min-width: 44px; height: 44px; }
 }
+
+/* A 320px screen still fits two filter triggers; only the cards need a single column. */
+@media (max-width: 380px) {
+  .games { grid-template-columns: minmax(0, 1fr); }
+  .book-filters :deep(.filter) { padding-inline: 12px; }
+}
+
 </style>

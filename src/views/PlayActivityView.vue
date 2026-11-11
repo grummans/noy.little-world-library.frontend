@@ -623,13 +623,31 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 1080px) {
-  .player__layout { grid-template-columns: 1fr; }
+  /* minmax(0, 1fr), not 1fr: a 1fr track grows to the widest inline content (the
+     stage note), which pushed the whole card past the phone viewport. */
+  .player__layout { grid-template-columns: minmax(0, 1fr); }
   .similar__list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
+@media (max-width: 900px) {
+  .player { padding: 0 24px 40px; }
+}
+
 @media (max-width: 680px) {
-  .player { padding: 0 20px 36px; }
-  .similar__list { grid-template-columns: 1fr; }
-  .stage__foot { flex-direction: column; align-items: flex-start; }
+  .player { padding: 0 18px 32px; }
+  .player__title { font-size: 24px; }
+  .player__meta { font-size: 13px; }
+  .stage { padding: 12px; border-radius: 20px; }
+  /* A phone cannot afford a 360px-tall empty stage above the fold. */
+  .stage__prestart { min-height: 240px; padding: 28px 18px; }
+  .stage__wordmark { font-size: 24px; }
+  .stage__note { font-size: 13px; }
+  .stage__error { min-height: 240px; }
+  .about { padding: 20px; border-radius: 20px; }
+  .stage__note { max-width: 100%; }
+  .similar__list { grid-template-columns: minmax(0, 1fr); }
+  .similar__cta { min-height: 44px; display: flex; align-items: center; justify-content: center; }
+  .stage__foot { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .stage__tool { min-height: 44px; }
 }
 </style>
