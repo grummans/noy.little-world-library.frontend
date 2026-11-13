@@ -13,3 +13,6 @@ coverage/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Local editor/LSP tooling state
+.pi-lsp.json

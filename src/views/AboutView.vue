@@ -5,10 +5,10 @@ import AppFooter from '../components/app/AppFooter.vue'
 import BaseButton from '../components/ui/BaseButton.vue'
 
 const authors = [
-  { name: 'Trương Thu Huyền', initials: 'TH' },
-  { name: 'Dương Hoài Thương', initials: 'HT' },
-  { name: 'Bùi Thị Thanh Thảo', initials: 'TT' },
-  { name: 'Vũ Kiều Anh', initials: 'KA' },
+  { name: 'Trương Thu Huyền', initials: 'TH', note: 'Khoa Giáo dục Mầm non\nTrường Đại học Sư phạm Hà Nội 2' },
+  { name: 'Dương Hoài Thương', initials: 'HT', note: 'Khoa Giáo dục Mầm non\nTrường Đại học Sư phạm Hà Nội 2' },
+  { name: 'Bùi Thị Thanh Thảo', initials: 'TT', note: 'Khoa Giáo dục Mầm non\nTrường Đại học Sư phạm Hà Nội 2' },
+  { name: 'TS. Vũ Kiều Anh', initials: 'KA', note: 'Khoa Giáo dục Mầm non\nTrường Đại học Sư phạm Hà Nội 2' },
 ]
 </script>
 
@@ -63,7 +63,7 @@ const authors = [
           <li v-for="author in authors" :key="author.name" class="author-card">
             <span class="author-card__monogram" aria-hidden="true">{{ author.initials }}</span>
             <h3>{{ author.name }}</h3>
-            <BookOpen class="author-card__icon" :size="25" aria-hidden="true" />
+            <span v-if="author.note" class="author-card__note">{{ author.note }}</span>
           </li>
         </ul>
       </section>

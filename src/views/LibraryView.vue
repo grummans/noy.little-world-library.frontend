@@ -13,7 +13,8 @@ import {
   filterBooks,
   type LibraryFilters,
 } from '../composables/useBooks'
-
+import { useCatalog } from '../composables/useCatalog'
+import type { Book } from '../data/books'
 const route = useRoute()
 const router = useRouter()
 
@@ -22,8 +23,23 @@ const categoryFromQuery = () => {
   return categories.find((category) => category.slug === slug)?.name ?? 'all'
 }
 
+// Books and bundles come back in one catalog request and share one grid.
+const { books: catalogBooks, loading, error, reload } = useCatalog('all')
+
+const kind = ref<'all' | 'book' | 'bundle'>('all')
+const kindOf = (book: Book) => book.kind ?? 'book'
+const kindOptions = [
+  { value: 'all', label: 'Tất cả' },
+  { value: 'book', label: 'Sách lẻ' },
+  { value: 'bundle', label: 'Gói sách' },
+] as const
 const filters = ref<LibraryFilters>(createLibraryFilters(categoryFromQuery()))
-const filteredBooks = computed(() => filterBooks(filters.value))
+const scopedBooks = computed(() =>
+  kind.value === 'all'
+    ? catalogBooks.value
+    : catalogBooks.value.filter((book) => kindOf(book) === kind.value),
+)
+const filteredBooks = computed(() => filterBooks(filters.value, scopedBooks.value))
 
 const BOOKS_PER_PAGE = 10
 const currentPage = ref(1)
@@ -97,6 +113,22 @@ watch(
           </div>
         </div>
 
+        <div class="library-kinds" role="tablist" aria-label="Loại sản phẩm">
+          <button
+            v-for="option in kindOptions"
+            :key="option.value"
+            class="library-kinds__pill"
+            :class="{ 'library-kinds__pill--active': kind === option.value }"
+            type="button"
+            role="tab"
+            :aria-selected="kind === option.value"
+            @click="kind = option.value"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+
+
         <BookFilters
           :model-value="filters"
           :categories="categories"
@@ -105,22 +137,34 @@ watch(
         />
 
         <p class="sr-only" aria-live="polite">
-          {{ filteredBooks.length }} cuốn sách phù hợp
+          {{ filteredBooks.length }} nội dung phù hợp
         </p>
 
+        <div v-if="loading" class="library-empty" role="status">
+          <p>Đang tải thư viện…</p>
+        </div>
+
+        <div v-else-if="error" class="library-empty" role="alert">
+          <h2>Chưa kết nối được thư viện</h2>
+          <p>{{ error }}</p>
+          <BaseButton variant="secondary" @click="reload">Thử lại</BaseButton>
+        </div>
+
         <BookGrid
-          v-if="paginatedBooks.length"
+          v-else-if="paginatedBooks.length"
           :books="paginatedBooks"
           variant="library"
         />
-
-
+        <div v-else-if="!catalogBooks.length" class="library-empty">
+          <h2>Thư viện đang được cập nhật</h2>
+          <p>Sách mới sẽ xuất hiện ở đây ngay khi được xuất bản.</p>
+        </div>
         <div v-else class="library-empty">
           <span class="library-empty__icon" aria-hidden="true">
             <SearchX :size="38" />
           </span>
-          <h2>Chưa tìm thấy cuốn sách nào</h2>
-          <p>Thử một từ khóa khác hoặc đặt lại bộ lọc để xem tất cả truyện nhé.</p>
+          <h2>Chưa tìm thấy nội dung nào</h2>
+          <p>Thử một từ khóa khác hoặc đặt lại bộ lọc để xem tất cả sách và gói sách nhé.</p>
           <BaseButton variant="secondary" @click="resetFilters">
             Đặt lại bộ lọc
           </BaseButton>
@@ -168,9 +212,12 @@ watch(
           <BaseButton to="/admin">Quản lý tủ sách <span aria-hidden="true">→</span></BaseButton>
         </div>
         <div class="adult-banner__art" aria-hidden="true">
-          <span class="flower">
-            <i v-for="petal in 5" :key="petal" />
-          </span>
+          <img
+            class="adult-banner__img"
+            src="/images/cozy_bear_storytime_nook.png"
+            alt=""
+            loading="lazy"
+          />
         </div>
       </aside>
     </main>

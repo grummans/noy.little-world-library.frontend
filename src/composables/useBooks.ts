@@ -1,4 +1,3 @@
-import { books } from '../data/books'
 import type { Book } from '../data/books'
 
 export interface LibraryFilters {
@@ -44,7 +43,7 @@ const matchesOption = (book: Book, option: string) => {
   return true
 }
 
-export const filterBooks = (filters: LibraryFilters, source: Book[] = books) => {
+export const filterBooks = (filters: LibraryFilters, source: Book[] = []) => {
   const search = normalize(filters.search)
 
   return source.filter((book) => {

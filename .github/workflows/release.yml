@@ -115,6 +115,7 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
+          config-file: ./.github/codeql-config.yml
           languages: javascript-typescript
           build-mode: none
           queries: security-extended
@@ -266,19 +267,36 @@ jobs:
           push: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VITE_MEDIA_ORIGIN=${{ github.ref == 'refs/heads/dev' && 'https://media-staging-littleworld.duckdns.org' || 'https://media.littleworld.cloud' }}
           # The Docker exporter does not support attestations.
           provenance: false
           sbom: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Scan image (Trivy)
+      # Print findings in the workflow log before enforcing the SARIF policy.
+      # SARIF is designed for code-scanning upload and does not show findings clearly.
+      - name: Report image findings (Trivy)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           vuln-type: os,library
+          format: table
+          # Always complete this diagnostic scan so the gate below controls publication.
+          exit-code: '0'
+
+      - name: Enforce image security policy (Trivy)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          vuln-type: os,library
+          scanners: vuln
+          limit-severities-for-sarif: true
           format: sarif
           output: trivy-image.sarif
           # Block publication when fixable HIGH or CRITICAL vulnerabilities exist.
@@ -304,6 +322,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           annotations: ${{ steps.meta.outputs.annotations }}
+          build-args: |
+            VITE_MEDIA_ORIGIN=${{ github.ref == 'refs/heads/dev' && 'https://media-staging-littleworld.duckdns.org' || 'https://media.littleworld.cloud' }}
           # Attach SBOM and build-provenance attestations to the image.
           provenance: mode=max
           sbom: true
