@@ -24,9 +24,8 @@ FROM nginx:stable-alpine AS runtime
 # Nginx needs writable cache, PID, and log directories when it runs as its
 # unprivileged built-in user.
 RUN apk upgrade --no-cache \
- && mkdir -p /var/cache/nginx /var/run /var/log/nginx \
- && chown -R nginx:nginx /var/cache/nginx /var/run /var/log/nginx /usr/share/nginx/html
-
+ && mkdir -p /var/cache/nginx /run /var/log/nginx \
+ && chown -R nginx:nginx /var/cache/nginx /run /var/log/nginx /usr/share/nginx/html
 COPY --chown=nginx:nginx nginx.conf /etc/nginx/conf.d/default.conf
 COPY --chown=nginx:nginx --from=build /app/dist /usr/share/nginx/html
 
