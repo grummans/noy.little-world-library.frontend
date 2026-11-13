@@ -31,6 +31,8 @@ export interface BookDetailResponse {
   book: Card
   description: string
   has_epub: boolean
+  /** "free" | "purchase" | "bundle" for a caller who may read it, "" otherwise. */
+  access: string
 }
 
 export interface BundleDetailResponse {

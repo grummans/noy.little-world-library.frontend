@@ -40,6 +40,7 @@ const load = async () => {
   notFound.value = false;
   loadError.value = "";
   book.value = null;
+  canReadNow.value = false;
 
   try {
     const [detail, tags] = await Promise.all([
@@ -51,6 +52,7 @@ const load = async () => {
     const mapped = cardToBook(detail.book, tagNameLookup(tags));
     mapped.description = detail.description;
     book.value = mapped;
+    canReadNow.value = Boolean(detail.access);
   } catch (err) {
     if (current !== requestId) return;
 
@@ -75,9 +77,10 @@ const categorySlug = computed(
   () =>
     categories.find((category) => category.name === book.value?.category)?.slug,
 );
-// Free books open straight away. Paid books need checkout, which does not exist yet, so
-// the CTA must not pretend the book is readable.
-const canReadNow = computed(() => book.value?.isFree === true);
+// The API answers for the caller: "free", "purchase" or "bundle" means the CTA opens the
+// reader; an empty value means checkout. Offering "Mua sách" to a buyer would ask them to
+// pay twice.
+const canReadNow = ref(false);
 
 const toggleSaved = () => {
   if (!book.value) return;
@@ -158,9 +161,12 @@ watch(
             </li>
             <li
               class="detail-tag"
-              :class="book.isFree ? 'detail-tag--mint' : 'detail-tag--butter'"
+              :class="canReadNow ? 'detail-tag--mint' : 'detail-tag--butter'"
             >
-              <Lock :size="15" /> {{ formatPrice(book) }}
+              <!-- A buyer already holds the book: a padlock over the price would read as
+                   "still locked", so the badge follows the same access flag as the CTA. -->
+              <component :is="canReadNow ? BookOpen : Lock" :size="15" />
+              {{ canReadNow ? 'Đã mở khoá' : formatPrice(book) }}
             </li>
             <li class="detail-tag detail-tag--butter">
               <Palette :size="15" /> Minh họa
