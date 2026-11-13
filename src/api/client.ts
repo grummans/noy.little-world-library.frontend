@@ -16,12 +16,11 @@ export class ApiError extends Error {
 
 type ErrorBody = { code?: string; message?: string }
 
-function apiURL(path: string): string {
+function apiPath(path: string): string {
   if (!path.startsWith('/api/')) {
     throw new ApiError(0, 'invalid_api_path', 'Đường dẫn API không hợp lệ.')
   }
-  // Rebuild a relative URL with a trusted prefix so callers cannot select an origin.
-  return `/api/${path.slice('/api/'.length)}`
+  return path.slice('/api/'.length)
 }
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers)
@@ -31,9 +30,9 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   }
 
   let response: Response
-  const url = apiURL(path)
+  const url = apiPath(path)
   try {
-    response = await fetch(url, { ...init, headers, credentials: 'include' })
+    response = await fetch(`/api/${url}`, { ...init, headers, credentials: 'include' })
   } catch {
     throw new ApiError(0, 'network', 'Không kết nối được máy chủ. Bé thử lại nhé.')
   }
