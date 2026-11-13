@@ -16,6 +16,13 @@ export class ApiError extends Error {
 
 type ErrorBody = { code?: string; message?: string }
 
+function apiURL(path: string): URL {
+  const url = new URL(path, window.location.origin)
+  if (url.origin !== window.location.origin || !url.pathname.startsWith('/api/')) {
+    throw new ApiError(0, 'invalid_api_path', 'Đường dẫn API không hợp lệ.')
+  }
+  return url
+}
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers)
   // FormData sets its own multipart boundary; forcing JSON would break the upload.
@@ -24,8 +31,9 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   }
 
   let response: Response
+  const url = apiURL(path)
   try {
-    response = await fetch(path, { ...init, headers, credentials: 'include' })
+    response = await fetch(url, { ...init, headers, credentials: 'include' })
   } catch {
     throw new ApiError(0, 'network', 'Không kết nối được máy chủ. Bé thử lại nhé.')
   }
