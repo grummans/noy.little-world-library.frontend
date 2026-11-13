@@ -155,6 +155,10 @@ watch(
           :books="paginatedBooks"
           variant="library"
         />
+        <div v-else-if="!catalogBooks.length" class="library-empty">
+          <h2>Thư viện đang được cập nhật</h2>
+          <p>Sách mới sẽ xuất hiện ở đây ngay khi được xuất bản.</p>
+        </div>
         <div v-else class="library-empty">
           <span class="library-empty__icon" aria-hidden="true">
             <SearchX :size="38" />
