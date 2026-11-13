@@ -16,12 +16,12 @@ export class ApiError extends Error {
 
 type ErrorBody = { code?: string; message?: string }
 
-function apiURL(path: string): URL {
-  const url = new URL(path, window.location.origin)
-  if (url.origin !== window.location.origin || !url.pathname.startsWith('/api/')) {
+function apiURL(path: string): string {
+  if (!path.startsWith('/api/')) {
     throw new ApiError(0, 'invalid_api_path', 'Đường dẫn API không hợp lệ.')
   }
-  return url
+  // Rebuild a relative URL with a trusted prefix so callers cannot select an origin.
+  return `/api/${path.slice('/api/'.length)}`
 }
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers)
