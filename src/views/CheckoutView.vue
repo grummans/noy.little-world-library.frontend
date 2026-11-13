@@ -5,6 +5,7 @@ import AppHeader from '../components/app/AppHeader.vue'
 import AppFooter from '../components/app/AppFooter.vue'
 import ConfirmDialog from '../components/app/ConfirmDialog.vue'
 import AppToast from '../components/app/AppToast.vue'
+import ResultDialog from '../components/app/ResultDialog.vue'
 import { ApiError } from '../api/client'
 import { getBook, getBundle } from '../api/catalog'
 import { createOrder } from '../api/orders'
@@ -25,7 +26,9 @@ const loadError = ref('')
 
 const confirming = ref(false)
 const paying = ref(false)
-const payError = ref('')
+// A failed confirm answers with a dialog. Success leaves the page for VNPay, so there is
+// nothing to acknowledge here: the payment page itself is the next screen.
+const payError = ref<{ title: string; message?: string } | null>(null)
 
 onMounted(async () => {
   if (!slug.value) {
@@ -81,21 +84,21 @@ const pay = async () => {
   if (paying.value) return
 
   paying.value = true
-  payError.value = ''
+  payError.value = null
   try {
     const order = await createOrder(
       kind.value === 'bundle' ? { bundleSlug: slug.value } : { bookSlug: slug.value },
     )
 
     if (!order.payment_url) {
-      payError.value = 'Chưa nhận được liên kết thanh toán. Vui lòng thử lại.'
+      payError.value = { title: 'Chưa tạo được đơn', message: 'Chưa nhận được liên kết thanh toán. Vui lòng thử lại.' }
       return
     }
 
     showToast('Đang chuyển sang cổng thanh toán VNPay…')
     window.location.assign(order.payment_url)
   } catch (err) {
-    payError.value = payMessage(err)
+    payError.value = { title: 'Chưa tạo được đơn thanh toán', message: payMessage(err) }
   } finally {
     paying.value = false
   }
@@ -181,7 +184,7 @@ const backTo = computed(() =>
             </div>
           </dl>
 
-          <p v-if="payError" class="checkout__error" role="alert">{{ payError }}</p>
+
 
           <button
             v-if="!loadError"
@@ -219,7 +222,15 @@ const backTo = computed(() =>
       @confirm="pay"
       @cancel="confirming = false"
     />
+    <!-- Not a result: it just bridges the redirect, so it stays a toast. -->
     <AppToast :message="toast" />
+    <ResultDialog
+      :open="Boolean(payError)"
+      tone="error"
+      :title="payError?.title ?? ''"
+      :message="payError?.message"
+      @close="payError = null"
+    />
   </div>
 </template>
 

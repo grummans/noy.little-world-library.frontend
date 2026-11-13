@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { AlertTriangle, Check, Clock, HelpCircle, X } from 'lucide-vue-next'
 import { RouterLink } from 'vue-router'
 import AppHeader from '../components/app/AppHeader.vue'
 import AppFooter from '../components/app/AppFooter.vue'
@@ -55,15 +56,15 @@ onBeforeUnmount(() => pollTimer && clearTimeout(pollTimer))
 const view = computed(() => {
   switch (state.value?.status) {
     case 'paid':
-      return { icon: '🎉', title: 'Thanh toán thành công!', tone: 'ok' as const }
+      return { icon: Check, title: 'Thanh toán thành công!', tone: 'ok' as const }
     case 'cancelled':
-      return { icon: '🚫', title: 'Bạn đã huỷ thanh toán', tone: 'warn' as const }
+      return { icon: X, title: 'Bạn đã huỷ thanh toán', tone: 'cancel' as const }
     case 'failed':
-      return { icon: '⚠️', title: 'Thanh toán chưa thành công', tone: 'warn' as const }
+      return { icon: AlertTriangle, title: 'Thanh toán chưa thành công', tone: 'warn' as const }
     case 'verifying':
-      return { icon: '⏳', title: 'Đang xác nhận thanh toán', tone: 'warn' as const }
+      return { icon: Clock, title: 'Đang xác nhận thanh toán', tone: 'wait' as const }
     default:
-      return { icon: '❔', title: 'Không xác thực được giao dịch', tone: 'warn' as const }
+      return { icon: HelpCircle, title: 'Không xác thực được giao dịch', tone: 'warn' as const }
   }
 })
 </script>
@@ -81,8 +82,10 @@ const view = computed(() => {
         <RouterLink class="pay__cta" to="/library">Về thư viện</RouterLink>
       </div>
 
-      <div v-else class="pay__card" :class="`pay__card--${view.tone}`">
-        <p class="pay__icon" aria-hidden="true">{{ view.icon }}</p>
+      <div v-else class="pay__card" :class="{ 'pay__card--ok': view.tone === 'ok' }">
+        <span class="pay__mark" :class="`pay__mark--${view.tone}`">
+          <component :is="view.icon" :size="26" :stroke-width="2.6" aria-hidden="true" />
+        </span>
         <h1>{{ view.title }}</h1>
         <p class="pay__message">{{ state?.message }}</p>
 
@@ -139,10 +142,35 @@ const view = computed(() => {
   background: #d9f1e1;
 }
 
-.pay__icon {
-  margin: 0;
-  font-size: 48px;
-  line-height: 1;
+/* The result mark: same soft circle the Studio dialogs use, so the emoji badge is gone. */
+.pay__mark {
+  display: inline-grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #eef2ee;
+  color: #5f6f66;
+}
+
+.pay__mark--ok {
+  background: #c9edd6;
+  color: #2e6143;
+}
+
+.pay__mark--cancel {
+  background: #f3efe6;
+  color: #8a7b5c;
+}
+
+.pay__mark--warn {
+  background: #fdeceb;
+  color: #b3261e;
+}
+
+.pay__mark--wait {
+  background: #fdf3d8;
+  color: #8a6a1f;
 }
 
 .pay__card h1 {

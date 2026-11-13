@@ -5,8 +5,7 @@ import { Sparkles } from 'lucide-vue-next'
 import AppHeader from '../components/app/AppHeader.vue'
 import StudioSidebar from '../components/studio/StudioSidebar.vue'
 import ConfirmDialog from '../components/app/ConfirmDialog.vue'
-import AppToast from '../components/app/AppToast.vue'
-import { useToast } from '../composables/useToast'
+import ResultDialog from '../components/app/ResultDialog.vue'
 import { ApiError } from '../api/client'
 import {
   createActivity,
@@ -27,6 +26,9 @@ const isNew = computed(() => routeID.value === 'new')
 const activityID = computed(() => Number(routeID.value))
 
 const activity = ref<Activity | null>(null)
+// Publishing changes what parents can see, so it is acknowledged in a dialog rather
+// than a toast that slides away.
+const success = ref<{ title: string; message?: string } | null>(null)
 const loading = ref(!isNew.value)
 const loadError = ref('')
 
@@ -46,9 +48,10 @@ const thumbnailInput = ref<HTMLInputElement | null>(null)
 
 const saving = ref(false)
 const formError = ref('')
+// A confirmed action answers with a dialog, success or failure.
+const failure = ref<{ title: string; message?: string } | null>(null)
 const formNote = ref('')
 const pendingAction = ref<'save' | 'publish' | 'hide' | null>(null)
-const { message: toast, show: showToast } = useToast()
 
 const previewOpen = ref(false)
 const previewSrc = ref('')
@@ -279,33 +282,38 @@ const submit = async (action: 'save' | 'publish' | 'hide') => {
         }
       } catch (err) {
         // Metadata is already saved; keep the editor usable and say what failed.
-        formError.value = `Đã lưu thông tin nhưng ảnh bìa lỗi: ${message(err)}`
+        failure.value = {
+          title: 'Đã lưu thông tin, chưa tải được ảnh bìa',
+          message: message(err),
+        }
       }
     }
 
-    if (action !== 'save' && !formError.value) {
+    if (action !== 'save' && !failure.value) {
       const target = action === 'publish' ? 'published' : 'hidden'
       try {
         result = await setActivityStatus(saved.id, target)
       } catch (err) {
         // The metadata edit is already stored and may be public: name that state instead
         // of implying nothing happened.
-        formError.value = `Đã lưu thông tin nhưng chưa đổi được trạng thái: ${message(err)}`
+        failure.value = {
+          title: 'Đã lưu thông tin, chưa đổi được trạng thái',
+          message: message(err),
+        }
       }
     }
 
     activity.value = result
-    if (!formError.value) {
-      showToast(
+    if (!formError.value && !failure.value) {
+      success.value =
         action === 'publish'
-          ? 'Đã xuất bản game.'
+          ? { title: 'Đã xuất bản game', message: 'Game đã hiển thị ở Góc vui học.' }
           : action === 'hide'
-            ? 'Đã ẩn game.'
-            : 'Đã lưu game.',
-      )
+            ? { title: 'Đã ẩn game', message: 'Game không còn hiển thị ở Góc vui học.' }
+            : { title: 'Đã lưu game', message: 'Thông tin game đã được cập nhật.' }
     }
   } catch (err) {
-    formError.value = message(err)
+    failure.value = { title: 'Chưa lưu được game', message: message(err) }
   } finally {
     saving.value = false
   }
@@ -565,8 +573,20 @@ const previewLoaded = () => {
         @confirm="submit(pendingAction === 'hide' ? 'hide' : pendingAction === 'publish' ? 'publish' : 'save')"
         @cancel="pendingAction = null"
       />
-      <AppToast :message="toast" />
-        </main>
+      <ResultDialog
+        :open="Boolean(success)"
+        :title="success?.title ?? ''"
+        :message="success?.message"
+        @close="success = null"
+      />
+      <ResultDialog
+        :open="Boolean(failure)"
+        tone="error"
+        :title="failure?.title ?? ''"
+        :message="failure?.message"
+        @close="failure = null"
+      />
+    </main>
       </div>
     </div>
   </div>

@@ -2,8 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import ConfirmDialog from '../app/ConfirmDialog.vue'
-import AppToast from '../app/AppToast.vue'
-import { useToast } from '../../composables/useToast'
+import ResultDialog from '../app/ResultDialog.vue'
 import { ApiError } from '../../api/client'
 import {
   createTopic,
@@ -31,7 +30,6 @@ const newTopic = ref('')
 const topicBusy = ref(false)
 const saving = ref(false)
 const cardRef = ref<HTMLElement | null>(null)
-const errorMessage = ref('')
 
 const fill = (book: TeacherBook) => {
   title.value = book.title
@@ -47,7 +45,8 @@ const confirming = ref(false)
 const confirmingDiscard = ref(false)
 const pendingTopic = ref('')
 const pendingLeave = ref('')
-const { message: toast, show: showToast } = useToast()
+// Every confirmed action ends in a dialog, success or failure.
+const result = ref<{ tone: 'success' | 'error'; title: string; message?: string } | null>(null)
 
 // Closing must not silently throw away edits the teacher has not confirmed.
 const baseline = ref('')
@@ -69,7 +68,6 @@ watch(
     if (!isOpen || !props.book) return
 
     fill(props.book)
-    errorMessage.value = ''
     newTopic.value = ''
     confirming.value = false
     confirmingDiscard.value = false
@@ -203,9 +201,9 @@ const addTopic = async () => {
     topics.value = [...topics.value, tag].sort((a, b) => a.name.localeCompare(b.name))
     topicId.value = tag.id
     newTopic.value = ''
-    showToast('Đã tạo chủ đề mới.')
+    result.value = { tone: 'success', title: 'Đã tạo chủ đề mới', message: `Chủ đề “${tag.name}” đã được chọn cho sách này.` }
   } catch (err) {
-    errorMessage.value = message(err)
+    result.value = { tone: 'error', title: 'Chưa tạo được chủ đề', message: message(err) }
   } finally {
     topicBusy.value = false
   }
@@ -236,7 +234,6 @@ const save = async () => {
   if (!book || saving.value) return
 
   saving.value = true
-  errorMessage.value = ''
   try {
     const updated = await updateBook(book.id, {
       title: title.value.trim(),
@@ -250,10 +247,10 @@ const save = async () => {
     // The book may have been switched while the request was in flight.
     if (props.book?.id === updated.id) {
       emit('saved', updated)
-      showToast('Đã cập nhật thông tin sách.')
+      result.value = { tone: 'success', title: 'Đã cập nhật thông tin sách', message: 'Thay đổi đã hiển thị trong thư viện.' }
     }
   } catch (err) {
-    errorMessage.value = message(err)
+    result.value = { tone: 'error', title: 'Chưa lưu được thay đổi', message: message(err) }
   } finally {
     saving.value = false
   }
@@ -381,7 +378,6 @@ const save = async () => {
         </div>
 
         <p v-if="formError" class="editbook__error" role="alert">{{ formError }}</p>
-        <p v-else-if="errorMessage" class="editbook__error" role="alert">{{ errorMessage }}</p>
 
         <div class="editbook__actions">
           <button type="button" class="editbook__link" @click="goToFiles">Thay tệp EPUB / bìa</button>
@@ -423,7 +419,13 @@ const save = async () => {
     />
   </div>
 
-  <AppToast :message="toast" />
+  <ResultDialog
+    :open="Boolean(result)"
+    :tone="result?.tone ?? 'success'"
+    :title="result?.title ?? ''"
+    :message="result?.message"
+    @close="result = null"
+  />
 </template>
 
 <style scoped>
@@ -613,7 +615,7 @@ const save = async () => {
   cursor: pointer;
 }
 
-.editbook__seg--on {
+.editbook__segmented button.editbook__seg--on {
   background: #397653;
   border-color: #397653;
   color: #fff;

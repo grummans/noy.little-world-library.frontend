@@ -11,14 +11,14 @@ import {
   type TeacherBundle,
 } from '../../api/teacher'
 import ConfirmDialog from '../app/ConfirmDialog.vue'
-import AppToast from '../app/AppToast.vue'
-import { useToast } from '../../composables/useToast'
+import ResultDialog from '../app/ResultDialog.vue'
 
 const props = defineProps<{ open: boolean; bundle: TeacherBundle | null }>()
 const emit = defineEmits<{ close: []; saved: [TeacherBundle] }>()
 
 const router = useRouter()
-const { message: toast, show: showToast } = useToast()
+// Every confirmed action ends in a dialog, success or failure.
+const result = ref<{ tone: 'success' | 'error'; title: string; message?: string } | null>(null)
 
 const title = ref('')
 const description = ref('')
@@ -165,9 +165,11 @@ const save = async () => {
 
     baseline.value = snapshot()
     emit('saved', saved)
-    showToast(props.bundle ? 'Đã cập nhật gói sách.' : 'Đã tạo gói sách.')
+    result.value = props.bundle
+      ? { tone: 'success', title: 'Đã cập nhật gói sách', message: 'Thay đổi đã hiển thị trong thư viện.' }
+      : { tone: 'success', title: 'Đã tạo gói sách', message: 'Gói đang ở trạng thái nháp; xuất bản khi đã sẵn sàng.' }
   } catch (err) {
-    errorMessage.value = message(err)
+    result.value = { tone: 'error', title: 'Chưa lưu được gói sách', message: message(err) }
   } finally {
     saving.value = false
   }
@@ -192,9 +194,9 @@ const uploadCover = async () => {
     const updated = await replaceBundleCover(props.bundle.id, file)
     cover.value = null
     emit('saved', updated)
-    showToast('Đã cập nhật ảnh bìa gói sách.')
+    result.value = { tone: 'success', title: 'Đã cập nhật ảnh bìa gói sách', message: 'Ảnh bìa mới đã được lưu.' }
   } catch (err) {
-    errorMessage.value = message(err)
+    result.value = { tone: 'error', title: 'Chưa cập nhật được ảnh bìa', message: message(err) }
   } finally {
     saving.value = false
   }
@@ -377,7 +379,13 @@ defineExpose({ close })
     />
   </div>
 
-  <AppToast :message="toast" />
+  <ResultDialog
+    :open="Boolean(result)"
+    :tone="result?.tone ?? 'success'"
+    :title="result?.title ?? ''"
+    :message="result?.message"
+    @close="result = null"
+  />
 </template>
 
 <style scoped>

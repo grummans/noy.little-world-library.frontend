@@ -5,9 +5,8 @@ import { Sparkles } from 'lucide-vue-next'
 import { ApiError } from '../api/client'
 import AppHeader from '../components/app/AppHeader.vue'
 import ConfirmDialog from '../components/app/ConfirmDialog.vue'
-import AppToast from '../components/app/AppToast.vue'
+import ResultDialog from '../components/app/ResultDialog.vue'
 import StudioSidebar from '../components/studio/StudioSidebar.vue'
-import { useToast } from '../composables/useToast'
 import {
   getMyBook,
   publishBook,
@@ -21,19 +20,20 @@ const router = useRouter()
 const bookId = Number(route.params.id)
 
 const book = ref<TeacherBook | null>(null)
+// Publishing changes what parents can see, so it is acknowledged in a dialog rather
+// than a toast that slides away.
+const success = ref<{ title: string; message?: string } | null>(null)
+const failure = ref<{ title: string; message?: string } | null>(null)
 const loading = ref(true)
 const loadError = ref('')
 const statusBusy = ref(false)
-const statusError = ref('')
 
 const epubFile = ref<File | null>(null)
 const coverFile = ref<File | null>(null)
 const epubInput = ref<HTMLInputElement | null>(null)
 const coverInput = ref<HTMLInputElement | null>(null)
 const filesBusy = ref(false)
-const filesMessage = ref('')
 const filesError = ref('')
-const { message: toast, show: showToast } = useToast()
 const pendingAction = ref<'status' | 'files' | null>(null)
 
 const isPublished = computed(() => book.value?.status === 'published')
@@ -113,8 +113,8 @@ const saveFiles = async () => {
   if (!book.value || filesBusy.value || !hasNewFiles.value) return
 
   filesBusy.value = true
-  filesMessage.value = ''
   filesError.value = ''
+  failure.value = null
   try {
     book.value = await replaceBookFiles(book.value.id, {
       epub: epubFile.value,
@@ -122,10 +122,9 @@ const saveFiles = async () => {
     })
     epubFile.value = null
     coverFile.value = null
-    filesMessage.value = 'Đã cập nhật tệp cho sách.'
-    showToast('Đã cập nhật tệp cho sách.')
+    success.value = { title: 'Đã cập nhật tệp cho sách', message: 'Bản EPUB và ảnh bìa mới đã được lưu.' }
   } catch (err) {
-    filesError.value = message(err)
+    failure.value = { title: 'Chưa cập nhật được tệp sách', message: message(err) }
   } finally {
     filesBusy.value = false
   }
@@ -137,12 +136,14 @@ const toggleStatus = async () => {
 
   const publishing = book.value.status !== 'published'
   statusBusy.value = true
-  statusError.value = ''
+  failure.value = null
   try {
     book.value = publishing ? await publishBook(book.value.id) : await unpublishBook(book.value.id)
-    showToast(publishing ? 'Đã xuất bản sách.' : 'Đã hủy xuất bản sách.')
+    success.value = publishing
+      ? { title: 'Đã xuất bản sách', message: 'Sách đã có trong Thư viện công khai.' }
+      : { title: 'Đã hủy xuất bản sách', message: 'Sách trở về trạng thái nháp, chỉ bạn nhìn thấy.' }
   } catch (err) {
-    statusError.value = message(err)
+    failure.value = { title: 'Chưa đổi được trạng thái sách', message: message(err) }
   } finally {
     statusBusy.value = false
   }
@@ -200,7 +201,6 @@ const backToStudio = () => void router.push('/studio')
           </div>
         </div>
 
-        <p v-if="statusError" class="edit__error" role="alert">{{ statusError }}</p>
 
         <ul class="edit__files">
           <li>
@@ -245,7 +245,6 @@ const backToStudio = () => void router.push('/studio')
         </div>
 
         <p v-if="filesError" class="edit__error" role="alert">{{ filesError }}</p>
-        <p v-else-if="filesMessage" class="edit__success" role="status">{{ filesMessage }}</p>
 
         <button
           type="button"
@@ -269,7 +268,19 @@ const backToStudio = () => void router.push('/studio')
         @confirm="pendingAction === 'files' ? saveFiles() : toggleStatus()"
         @cancel="pendingAction = null"
       />
-      <AppToast :message="toast" />
+      <ResultDialog
+        :open="Boolean(success)"
+        :title="success?.title ?? ''"
+        :message="success?.message"
+        @close="success = null"
+      />
+      <ResultDialog
+        :open="Boolean(failure)"
+        tone="error"
+        :title="failure?.title ?? ''"
+        :message="failure?.message"
+        @close="failure = null"
+      />
         </main>
       </div>
     </div>

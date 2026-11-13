@@ -15,21 +15,22 @@ import AppHeader from '../components/app/AppHeader.vue'
 import BundleModal from '../components/studio/BundleModal.vue'
 import StudioSidebar from '../components/studio/StudioSidebar.vue'
 import ConfirmDialog from '../components/app/ConfirmDialog.vue'
-import AppToast from '../components/app/AppToast.vue'
-import { useToast } from '../composables/useToast'
+import ResultDialog from '../components/app/ResultDialog.vue'
 
 const bundles = ref<TeacherBundle[]>([])
 // Paid orders only; a bundle never splits its revenue onto the books inside it.
 const sales = ref<SalesItem[]>([])
+// Publishing changes what parents can see, so it is acknowledged in a dialog rather
+// than a toast that slides away.
+const success = ref<{ title: string; message?: string } | null>(null)
+const failure = ref<{ title: string; message?: string } | null>(null)
 const salesError = ref('')
 const loading = ref(true)
 const error = ref('')
 const busyId = ref<number | null>(null)
-const actionError = ref('')
 const pendingToggle = ref<TeacherBundle | null>(null)
 const editing = ref<TeacherBundle | null>(null)
 const creating = ref(false)
-const { message: toast, show: showToast } = useToast()
 
 const load = async () => {
   loading.value = true
@@ -84,20 +85,25 @@ const confirmToggle = async () => {
 
   const publishing = bundle.status !== 'published'
   busyId.value = bundle.id
-  actionError.value = ''
+  failure.value = null
   try {
     const updated = publishing
       ? await publishBundle(bundle.id)
       : await unpublishBundle(bundle.id)
     bundles.value = bundles.value.map((item) => (item.id === updated.id ? updated : item))
-    showToast(publishing ? 'Đã xuất bản gói sách.' : 'Đã hủy xuất bản gói sách.')
+    success.value = publishing
+      ? { title: 'Đã xuất bản gói sách', message: 'Gói sách đã có trong Thư viện công khai.' }
+      : { title: 'Đã hủy xuất bản gói sách', message: 'Gói sách trở về trạng thái nháp.' }
   } catch (err) {
-    actionError.value =
-      err instanceof ApiError && err.code === 'not_publishable'
-        ? 'Gói cần ít nhất một sách đã xuất bản trước khi xuất bản.'
-        : err instanceof ApiError && err.code === 'validation'
-          ? 'Không thể hủy xuất bản vì gói đang được bán.'
-          : message(err)
+    failure.value = {
+      title: 'Chưa đổi được trạng thái gói sách',
+      message:
+        err instanceof ApiError && err.code === 'not_publishable'
+          ? 'Gói cần ít nhất một sách đã xuất bản trước khi xuất bản.'
+          : err instanceof ApiError && err.code === 'validation'
+            ? 'Không thể hủy xuất bản vì gói đang được bán.'
+            : message(err),
+    }
   } finally {
     busyId.value = null
   }
@@ -153,10 +159,6 @@ const salesFor = (bundleID: number) => salesByBundle.value.get(bundleID) ?? noSa
           ＋ Tạo gói sách
         </button>
       </div>
-
-      <p v-if="actionError" class="bundles__state bundles__state--error" role="alert">
-        {{ actionError }}
-      </p>
 
       <p v-if="salesError" class="bundles__state bundles__state--warning" role="alert">
         {{ salesError }}
@@ -261,7 +263,19 @@ const salesFor = (bundleID: number) => salesByBundle.value.get(bundleID) ?? noSa
       @confirm="confirmToggle"
       @cancel="pendingToggle = null"
     />
-
+    <ResultDialog
+      :open="Boolean(success)"
+      :title="success?.title ?? ''"
+      :message="success?.message"
+      @close="success = null"
+    />
+    <ResultDialog
+      :open="Boolean(failure)"
+      tone="error"
+      :title="failure?.title ?? ''"
+      :message="failure?.message"
+      @close="failure = null"
+    />
     <BundleModal
       :open="creating"
       :bundle="null"
@@ -275,7 +289,6 @@ const salesFor = (bundleID: number) => salesByBundle.value.get(bundleID) ?? noSa
       @saved="onSaved"
     />
 
-    <AppToast :message="toast" />
   </div>
 </template>
 

@@ -4,10 +4,9 @@ import { RouterLink } from 'vue-router'
 import { Sparkles } from 'lucide-vue-next'
 import AppHeader from '../components/app/AppHeader.vue'
 import ConfirmDialog from '../components/app/ConfirmDialog.vue'
-import AppToast from '../components/app/AppToast.vue'
+import ResultDialog from '../components/app/ResultDialog.vue'
 import AppSelect from '../components/app/AppSelect.vue'
 import StudioSidebar from '../components/studio/StudioSidebar.vue'
-import { useToast } from '../composables/useToast'
 import { ApiError } from '../api/client'
 import {
   activityAgeLabel,
@@ -20,16 +19,18 @@ import {
 
 const games = ref<Activity[]>([])
 const stats = ref<ActivityStats>({ total: 0, published: 0, draft: 0, hidden: 0 })
+// Publishing changes what parents can see, so it is acknowledged in a dialog rather
+// than a toast that slides away.
+const success = ref<{ title: string; message?: string } | null>(null)
+const failure = ref<{ title: string; message?: string } | null>(null)
 const loading = ref(true)
 const loadError = ref('')
-const actionError = ref('')
 const busyId = ref<number | null>(null)
 const search = ref('')
 const statusFilter = ref<'all' | ActivityStatus>('all')
 const typeFilter = ref('')
 const sort = ref<'updated' | 'title'>('updated')
 const pending = ref<Activity | null>(null)
-const { message: toast, show: showToast } = useToast()
 
 const statusLabel: Record<ActivityStatus, string> = {
   published: 'Đã xuất bản',
@@ -148,7 +149,7 @@ const confirmStatus = async () => {
 
   const target = nextStatus(game)
   busyId.value = game.id
-  actionError.value = ''
+  failure.value = null
   try {
     const updated = await setActivityStatus(game.id, target.status)
     games.value = games.value.map((item) => (item.id === updated.id ? updated : item))
@@ -158,9 +159,12 @@ const confirmStatus = async () => {
       draft: games.value.filter((item) => item.status === 'draft').length,
       hidden: games.value.filter((item) => item.status === 'hidden').length,
     }
-    showToast(target.status === 'published' ? 'Đã xuất bản game.' : 'Đã ẩn game.')
+    success.value =
+      target.status === 'published'
+        ? { title: 'Đã xuất bản game', message: 'Game đã hiển thị ở Góc vui học.' }
+        : { title: 'Đã ẩn game', message: 'Game không còn hiển thị ở Góc vui học.' }
   } catch (err) {
-    actionError.value = message(err)
+    failure.value = { title: 'Chưa đổi được trạng thái game', message: message(err) }
   } finally {
     busyId.value = null
   }
@@ -249,10 +253,6 @@ const confirmStatus = async () => {
         </button>
         <RouterLink class="games__primary" to="/studio/games/new">＋ Thêm game</RouterLink>
       </div>
-
-      <p v-if="actionError" class="games__state games__state--error" role="alert">
-        {{ actionError }}
-      </p>
 
       <p v-if="loading" class="games__state" role="status">Đang tải game…</p>
 
@@ -354,8 +354,19 @@ const confirmStatus = async () => {
       @confirm="confirmStatus"
       @cancel="pending = null"
     />
-    <AppToast :message="toast" />
-  </div>
+    <ResultDialog
+      :open="Boolean(success)"
+      :title="success?.title ?? ''"
+      :message="success?.message"
+      @close="success = null"
+    />
+    <ResultDialog
+      :open="Boolean(failure)"
+      tone="error"
+      :title="failure?.title ?? ''"
+      :message="failure?.message"
+      @close="failure = null"
+    />  </div>
 </template>
 
 <style scoped>

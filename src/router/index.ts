@@ -16,6 +16,7 @@ import BundleDetailView from '../views/BundleDetailView.vue'
 import CheckoutView from '../views/CheckoutView.vue'
 import OrdersView from '../views/OrdersView.vue'
 import PaymentReturnView from '../views/PaymentReturnView.vue'
+import NotFoundView from '../views/NotFoundView.vue'
 import PlayView from '../views/PlayView.vue'
 import PlayActivityView from '../views/PlayActivityView.vue'
 import { useSession } from '../composables/useSession'
@@ -36,6 +37,18 @@ const router = createRouter({
       meta: { role: 'parent' },
     },
     { path: '/payment/return', component: PaymentReturnView },
+
+    // VNPay env values have used /checkout/return before; the query carries the signature,
+
+    // so it has to survive the redirect.
+
+    {
+
+      path: '/checkout/return',
+
+      redirect: (to) => ({ path: '/payment/return', query: to.query }),
+
+    },
     { path: '/orders', component: OrdersView, meta: { role: 'parent' } },
     {
       path: '/parent/library',
@@ -80,6 +93,10 @@ const router = createRouter({
     { path: '/play', component: PlayView, meta: { denyRole: 'teacher' } },
     { path: '/play/:slug', component: PlayActivityView, meta: { denyRole: 'teacher' } },
     { path: '/admin', redirect: '/studio' },
+
+    // No match used to render an empty app: a stale link must still say something.
+
+    { path: '/:pathMatch(.*)*', component: NotFoundView },
   ],
 })
 

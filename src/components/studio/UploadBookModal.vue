@@ -3,8 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { ApiError } from '../../api/client'
 import ConfirmDialog from '../app/ConfirmDialog.vue'
-import AppToast from '../app/AppToast.vue'
-import { useToast } from '../../composables/useToast'
+import ResultDialog from '../app/ResultDialog.vue'
 import {
   createBook,
   createTopic,
@@ -39,6 +38,13 @@ const ageMax = ref<number | null>(null)
 const topicId = ref<number | null>(null)
 const topics = ref<Tag[]>([])
 const newTopic = ref('')
+// Topics are an open list: a teacher can keep adding them, so the picker is filtered and
+// height-capped instead of pushing the whole form down.
+const topicFilter = ref('')
+const visibleTopics = computed(() => {
+  const needle = topicFilter.value.trim().toLowerCase()
+  return needle ? topics.value.filter((t) => t.name.toLowerCase().includes(needle)) : topics.value
+})
 const topicBusy = ref(false)
 
 const createdBook = ref<TeacherBook | null>(null)
@@ -46,7 +52,8 @@ const published = ref(false)
 const publishFailed = ref(false)
 const confirmingDiscard = ref(false)
 const pendingTopic = ref('')
-const { message: toast, show: showToast } = useToast()
+// A confirmed action answers with a dialog; this one creates a topic.
+const result = ref<{ tone: 'success' | 'error'; title: string; message?: string } | null>(null)
 
 const MAX_EPUB_BYTES = 50 * 1024 * 1024
 
@@ -128,9 +135,9 @@ const addTopic = async () => {
     topics.value = [...topics.value, tag].sort((a, b) => a.name.localeCompare(b.name))
     topicId.value = tag.id
     newTopic.value = ''
-    showToast('Đã tạo chủ đề mới.')
+    result.value = { tone: 'success', title: 'Đã tạo chủ đề mới', message: `Chủ đề “${tag.name}” đã được chọn.` }
   } catch (err) {
-    errorMessage.value = uploadMessage(err)
+    result.value = { tone: 'error', title: 'Chưa tạo được chủ đề', message: uploadMessage(err) }
   } finally {
     topicBusy.value = false
   }
@@ -235,14 +242,12 @@ const save = async (publishNow: boolean) => {
     if (!publishNow) {
       published.value = false
       step.value = 'done'
-      showToast('Đã lưu bản nháp.')
       return
     }
 
     try {
       createdBook.value = await publishBook(book.id)
       published.value = true
-      showToast('Đã xuất bản sách.')
       emit('saved')
       step.value = 'done'
     } catch (err) {
@@ -390,9 +395,20 @@ const openEdit = () => {
 
             <fieldset class="upload__field">
               <legend>Chủ đề</legend>
+              <input
+                v-if="topics.length > 6"
+                v-model="topicFilter"
+                type="search"
+                class="upload__topic-search"
+                placeholder="Tìm chủ đề…"
+                aria-label="Tìm chủ đề"
+              />
               <div class="upload__chips">
+                <p v-if="!visibleTopics.length" class="upload__chips-empty">
+                  Không có chủ đề khớp. Thêm chủ đề mới ở dưới.
+                </p>
                 <button
-                  v-for="topic in topics"
+                  v-for="topic in visibleTopics"
                   :key="topic.id"
                   type="button"
                   class="upload__chip"
@@ -596,7 +612,13 @@ const openEdit = () => {
     />
   </div>
 
-  <AppToast :message="toast" />
+  <ResultDialog
+    :open="Boolean(result)"
+    :tone="result?.tone ?? 'success'"
+    :title="result?.title ?? ''"
+    :message="result?.message"
+    @close="result = null"
+  />
 </template>
 
 <style scoped>
@@ -747,6 +769,22 @@ const openEdit = () => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  /* Three rows, then it scrolls: the list has no upper bound. */
+  max-height: 132px;
+  overflow-y: auto;
+  padding-right: 4px;
+  align-content: flex-start;
+}
+
+.upload__topic-search {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.upload__chips-empty {
+  margin: 0;
+  color: #77847c;
+  font-size: 13px;
 }
 
 .upload__chip {
@@ -817,7 +855,7 @@ const openEdit = () => {
   cursor: pointer;
 }
 
-.upload__seg--on {
+.upload__segmented button.upload__seg--on {
   background: #d9f1e1;
   border-color: #397653;
   color: #397653;

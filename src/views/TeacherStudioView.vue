@@ -7,8 +7,7 @@ import UploadBookModal from '../components/studio/UploadBookModal.vue'
 import StudioSidebar from '../components/studio/StudioSidebar.vue'
 import EditBookModal from '../components/studio/EditBookModal.vue'
 import ConfirmDialog from '../components/app/ConfirmDialog.vue'
-import AppToast from '../components/app/AppToast.vue'
-import { useToast } from '../composables/useToast'
+import ResultDialog from '../components/app/ResultDialog.vue'
 
 import { ApiError } from '../api/client'
 import {
@@ -35,11 +34,13 @@ const sales = ref<SalesSummary | null>(null)
 const salesError = ref('')
 const search = ref('')
 const busyId = ref<number | null>(null)
-const actionError = ref('')
 const uploadOpen = ref(false)
+// Publishing changes what parents can see, so it is acknowledged in a dialog rather
+// than a toast that slides away.
+const success = ref<{ title: string; message?: string } | null>(null)
+const failure = ref<{ title: string; message?: string } | null>(null)
 const editing = ref<TeacherBook | null>(null)
 const pendingToggle = ref<TeacherBook | null>(null)
-const { message: toast, show: showToast } = useToast()
 
 const noItem: SalesItem = { id: 0, title: '', sold: 0, revenue_vnd: 0 }
 
@@ -158,14 +159,16 @@ const confirmToggle = async () => {
 
   const publishing = book.status !== 'published'
   busyId.value = book.id
-  actionError.value = ''
+  failure.value = null
 
   try {
     const updated = publishing ? await publishBook(book.id) : await unpublishBook(book.id)
     books.value = books.value.map((item) => (item.id === updated.id ? updated : item))
-    showToast(publishing ? 'Đã xuất bản sách.' : 'Đã hủy xuất bản sách.')
+    success.value = publishing
+      ? { title: 'Đã xuất bản sách', message: 'Sách đã có trong Thư viện công khai.' }
+      : { title: 'Đã hủy xuất bản sách', message: 'Sách trở về trạng thái nháp, chỉ bạn nhìn thấy.' }
   } catch (err) {
-    actionError.value = actionMessage(err, publishing)
+    failure.value = { title: 'Chưa đổi được trạng thái sách', message: actionMessage(err, publishing) }
   } finally {
     busyId.value = null
   }
@@ -238,10 +241,6 @@ const onSaved = (updated: TeacherBook) => {
               ＋ Tải sách mới
             </button>
           </div>
-
-          <p v-if="actionError" class="studio__state studio__state--error" role="alert">
-            {{ actionError }}
-          </p>
 
           <p v-if="topicsError" class="studio__state studio__state--warning" role="status">
             {{ topicsError }}
@@ -372,7 +371,19 @@ const onSaved = (updated: TeacherBook) => {
       @confirm="confirmToggle"
       @cancel="pendingToggle = null"
     />
-    <AppToast :message="toast" />
+    <ResultDialog
+      :open="Boolean(success)"
+      :title="success?.title ?? ''"
+      :message="success?.message"
+      @close="success = null"
+    />
+    <ResultDialog
+      :open="Boolean(failure)"
+      tone="error"
+      :title="failure?.title ?? ''"
+      :message="failure?.message"
+      @close="failure = null"
+    />
     <EditBookModal
       :open="Boolean(editing)"
       :book="editing"
