@@ -52,6 +52,12 @@ export interface SalesWeek {
   revenue_vnd: number
 }
 
+// One bar of the dashboard's daily chart; date is a plain day (YYYY-MM-DD).
+export interface SalesDay {
+  date: string
+  revenue_vnd: number
+}
+
 export interface SalesOrder {
   paid_at: string
   title: string
@@ -63,6 +69,8 @@ export interface SalesSummary {
   books: SalesItem[]
   bundles: SalesItem[]
   trend: SalesWeek[]
+  /** Last seven calendar days, independent of the requested range. */
+  days: SalesDay[]
   recent: SalesOrder[]
 }
 

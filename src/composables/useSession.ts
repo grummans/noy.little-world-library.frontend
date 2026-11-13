@@ -103,5 +103,5 @@ export function useSession() {
 
 /** Where a signed-in user lands: the public homepage, or the studio for a teacher. */
 export function homeFor(user: SessionUser): string {
-  return user.role === 'teacher' ? '/studio' : '/'
+  return user.role === 'teacher' ? '/studio/dashboard' : '/'
 }

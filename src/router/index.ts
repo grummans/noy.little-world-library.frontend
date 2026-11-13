@@ -19,6 +19,7 @@ import PaymentReturnView from '../views/PaymentReturnView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
 import PlayView from '../views/PlayView.vue'
 import PlayActivityView from '../views/PlayActivityView.vue'
+import StudioDashboardView from '../views/StudioDashboardView.vue'
 import { useSession } from '../composables/useSession'
 
 const router = createRouter({
@@ -57,11 +58,22 @@ const router = createRouter({
     },
     { path: '/bundles/:slug', component: BundleDetailView },
     {
+      // The studio is a dashboard first: /studio lands on Tổng quan (`378:7`), and the book
+      // list lives on its own path so the sidebar can highlight the right entry.
       path: '/studio',
+      redirect: '/studio/dashboard',
+    },
+    {
+      path: '/studio/dashboard',
+      component: StudioDashboardView,
+      meta: { role: 'teacher' },
+    },
+    {
+      path: '/studio/books',
       component: TeacherStudioView,
       meta: { role: 'teacher' },
     },
-    { path: '/studio/upload', redirect: '/studio' },
+    { path: '/studio/upload', redirect: '/studio/books' },
     {
       path: '/studio/books/:id',
       component: StudioBookEditView,

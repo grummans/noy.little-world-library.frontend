@@ -7,9 +7,9 @@ import { RouterLink, useRoute } from 'vue-router'
 
 const route = useRoute()
 
-const onStudioHome = computed(
-  () => route.path === '/studio' || route.path.startsWith('/studio/books'),
-)
+
+const onDashboard = computed(() => route.path.startsWith('/studio/dashboard'))
+const onStudioHome = computed(() => route.path.startsWith('/studio/books'))
 const onBundles = computed(() => route.path.startsWith('/studio/bundles'))
 const onGames = computed(() => route.path.startsWith('/studio/games'))
 const onRevenue = computed(() => route.path.startsWith('/studio/revenue'))
@@ -18,8 +18,18 @@ const onRevenue = computed(() => route.path.startsWith('/studio/revenue'))
 <template>
   <nav class="sidebar" aria-label="Không gian giáo viên">
     <p class="sidebar__title">KHÔNG GIAN GIÁO VIÊN</p>
-    <RouterLink class="sidebar__nav" to="/studio">▦ Tổng quan</RouterLink>
-    <RouterLink class="sidebar__nav" :class="{ 'sidebar__nav--active': onStudioHome }" to="/studio">
+    <RouterLink
+      class="sidebar__nav"
+      :class="{ 'sidebar__nav--active': onDashboard }"
+      to="/studio/dashboard"
+    >
+      ▦ Tổng quan
+    </RouterLink>
+    <RouterLink
+      class="sidebar__nav"
+      :class="{ 'sidebar__nav--active': onStudioHome }"
+      to="/studio/books"
+    >
       📚 Sách của tôi
     </RouterLink>
     <RouterLink

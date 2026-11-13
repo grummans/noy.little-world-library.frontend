@@ -149,7 +149,7 @@ const toggleStatus = async () => {
   }
 }
 
-const backToStudio = () => void router.push('/studio')
+const backToStudio = () => void router.push('/studio/books')
 </script>
 
 <template>
@@ -160,7 +160,7 @@ const backToStudio = () => void router.push('/studio')
         <nav class="edit__breadcrumb" aria-label="Breadcrumb">
           <RouterLink to="/">Trang chủ</RouterLink>
           <span aria-hidden="true">/</span>
-          <RouterLink to="/studio">Teacher Studio</RouterLink>
+          <RouterLink to="/studio/books">Teacher Studio</RouterLink>
           <span aria-hidden="true">/</span>
           <span>Tệp sách</span>
         </nav>
