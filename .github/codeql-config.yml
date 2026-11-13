@@ -1,0 +1,3 @@
+# PDF.js is vendored third-party code; track it through its upstream release instead.
+paths-ignore:
+  - src/vendor/foliate-js/vendor/pdfjs/**

@@ -67,6 +67,35 @@ function updateLocation(event: Event) {
   }
 }
 
+function sanitizeBookMarkup(source: string, type: string): string {
+  const mimeType = /(xhtml|xml)/.test(type) ? "application/xhtml+xml" : "text/html";
+  const document = new DOMParser().parseFromString(source, mimeType);
+  if (mimeType === "application/xhtml+xml" && document.querySelector("parsererror")) {
+    return "";
+  }
+
+  document.querySelectorAll("script, iframe, object, embed, base").forEach((element) => {
+    element.remove();
+  });
+  document.querySelectorAll("*").forEach((element) => {
+    for (const attribute of element.getAttributeNames()) {
+      const name = attribute.toLowerCase();
+      const value = element.getAttribute(attribute) ?? "";
+      if (
+        name.startsWith("on") ||
+        (["href", "src", "xlink:href", "action", "formaction"].includes(name) &&
+          /^\s*javascript:/i.test(value))
+      ) {
+        element.removeAttribute(attribute);
+      }
+    }
+  });
+
+  return mimeType === "text/html"
+    ? document.documentElement.outerHTML
+    : new XMLSerializer().serializeToString(document);
+}
+
 function removeBookScripts(event: Event) {
   const resource = (event as CustomEvent<{ data?: unknown; type?: string }>)
     .detail;
@@ -78,11 +107,8 @@ function removeBookScripts(event: Event) {
 
   resource.data = Promise.resolve(resource.data).then(async (data) => {
     const source = data instanceof Blob ? await data.text() : data;
-    if (typeof source !== "string" || !/(xhtml|html|xml)/.test(type))
-      return data;
-    const safeMarkup = source
-      .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, "")
-      .replace(/<script\b[^>]*\/\s*>/gi, "");
+    if (typeof source !== "string" || !/(xhtml|html|xml)/.test(type)) return data;
+    const safeMarkup = sanitizeBookMarkup(source, type);
     return data instanceof Blob
       ? new Blob([safeMarkup], { type: data.type })
       : safeMarkup;
